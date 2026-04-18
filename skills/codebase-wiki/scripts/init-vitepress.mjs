@@ -47,6 +47,11 @@ function parseArgs(argv) {
   return out;
 }
 
+// `npx skills` filters out dotfiles/dotdirs during installation, so assets
+// use underscore-prefixed names (e.g. `_vitepress`) that are restored to
+// dot-prefixed names (`.vitepress`) when copied into the target repo.
+const DOTDIR_RENAME = { _vitepress: ".vitepress", _starlight: ".starlight" };
+
 /**
  * Recursively copy a directory, applying text replacements to non-binary files.
  * Skips existing files unless `force` is true.
@@ -55,7 +60,8 @@ function copyDirWithReplacements(srcDir, destDir, replacements, force) {
   fs.mkdirSync(destDir, { recursive: true });
   for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
     const srcPath = path.join(srcDir, entry.name);
-    const destPath = path.join(destDir, entry.name);
+    const destName = DOTDIR_RENAME[entry.name] || entry.name;
+    const destPath = path.join(destDir, destName);
     if (entry.isDirectory()) {
       copyDirWithReplacements(srcPath, destPath, replacements, force);
     } else {
@@ -149,9 +155,11 @@ function main() {
   ];
 
   // 4. Copy assets/vitepress/ skeleton into target repo
-  //    - assets/vitepress/.vitepress/* → <root>/.vitepress/*
+  //    - assets/vitepress/_vitepress/* → <root>/.vitepress/*
   //    - assets/vitepress/INDEX.md    → <root>/codebase-wiki/INDEX.md
-  const vpAssetsDir = path.join(assetsDir, ".vitepress");
+  // NOTE: assets use `_vitepress` (not `.vitepress`) because `npx skills`
+  // filters out dotfiles/dotdirs during installation.
+  const vpAssetsDir = path.join(assetsDir, "_vitepress");
   const vpDestDir = path.join(root, ".vitepress");
   copyDirWithReplacements(vpAssetsDir, vpDestDir, replacements, force);
 

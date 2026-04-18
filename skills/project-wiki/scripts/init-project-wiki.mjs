@@ -55,11 +55,17 @@ function stacksFromArg(stackArg) {
   return new Set(picked.length > 0 ? picked : ["vitepress"]);
 }
 
+// `npx skills` filters out dotfiles/dotdirs during installation, so assets
+// use underscore-prefixed names (e.g. `_vitepress`) that are restored to
+// dot-prefixed names (`.vitepress`) when copied into the target repo.
+const DOTDIR_RENAME = { _vitepress: ".vitepress", _starlight: ".starlight" };
+
 function copyDirWithReplacements(srcDir, destDir, replacements, force) {
   fs.mkdirSync(destDir, { recursive: true });
   for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
     const srcPath = path.join(srcDir, entry.name);
-    const destPath = path.join(destDir, entry.name);
+    const destName = DOTDIR_RENAME[entry.name] || entry.name;
+    const destPath = path.join(destDir, destName);
     if (entry.isDirectory()) {
       copyDirWithReplacements(srcPath, destPath, replacements, force);
     } else {
@@ -165,10 +171,13 @@ function main() {
     : "";
 
   // VitePress (default)
+  // NOTE: assets use `_vitepress` (not `.vitepress`) because `npx skills`
+  // filters out dotfiles/dotdirs during installation. The rename to
+  // `.vitepress` happens inside copyDirWithReplacements via DOTDIR_RENAME.
   if (stacks.has("vitepress") && fs.existsSync(vpAssetsDir)) {
     const vpReplacements = { __WIKI_TITLE__: title, __SOCIAL_LINKS__: socialLinks };
     copyDirWithReplacements(
-      path.join(vpAssetsDir, ".vitepress"),
+      path.join(vpAssetsDir, "_vitepress"),
       path.join(root, WIKI_DIR, ".vitepress"),
       vpReplacements, force,
     );
