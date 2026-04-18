@@ -5,6 +5,10 @@ const WIKI_DIR = "codebase-wiki";
 /**
  * Scaffold codebase-wiki/ + .vitepress for the codebase-wiki workflow.
  *
+ * Uses template files from assets/vitepress/ instead of generating config
+ * strings in code. The script copies the asset skeleton, applies variable
+ * substitution, and then runs regenerate-sidebar.mjs.
+ *
  * Usage (from target repo root):
  *   node <path-to-this-skill>/scripts/init-vitepress.mjs --root .
  *
@@ -43,15 +47,31 @@ function parseArgs(argv) {
   return out;
 }
 
-function writeIfAbsent(file, content, force) {
-  if (fs.existsSync(file) && !force) {
-    console.log(`Skip existing ${file}`);
-    return false;
+/**
+ * Recursively copy a directory, applying text replacements to non-binary files.
+ * Skips existing files unless `force` is true.
+ */
+function copyDirWithReplacements(srcDir, destDir, replacements, force) {
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      copyDirWithReplacements(srcPath, destPath, replacements, force);
+    } else {
+      if (fs.existsSync(destPath) && !force) {
+        console.log(`Skip existing ${destPath}`);
+        continue;
+      }
+      fs.mkdirSync(path.dirname(destPath), { recursive: true });
+      let content = fs.readFileSync(srcPath, "utf8");
+      for (const [pattern, value] of replacements) {
+        content = content.replaceAll(pattern, value);
+      }
+      fs.writeFileSync(destPath, content, "utf8");
+      console.log(`Wrote ${destPath}`);
+    }
   }
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, content, "utf8");
-  console.log(`Wrote ${file}`);
-  return true;
 }
 
 function mergePackageJson(root) {
@@ -86,96 +106,29 @@ function mergePackageJson(root) {
   }
 }
 
-/** @param {string} title @param {string} github */
-function buildVitePressConfig(title, github) {
-  const social =
-    github && github.length > 0
-      ? `socialLinks: [{ icon: "github", link: ${JSON.stringify(github)} }],`
-      : "socialLinks: [],";
-
-  return `import { defineConfig } from "vitepress";
-import type { MarkdownIt } from "markdown-it";
-import { wikiNav, wikiSidebar } from "./sidebar.generated.mts";
-
-/**
- * Escape bare angle brackets in prose so TypeScript generics are not parsed as HTML.
- */
-function escapeAngleBrackets(md: MarkdownIt) {
-  const defaultHtmlInline =
-    md.renderer.rules.html_inline ||
-    ((tokens, idx) => tokens[idx].content);
-
-  md.renderer.rules.html_inline = (tokens, idx, options, env, self) => {
-    const content = tokens[idx].content;
-    const htmlTagRe =
-      /^<\\/?(div|span|p|br|hr|img|a|b|i|em|strong|code|pre|ul|ol|li|table|thead|tbody|tr|td|th|h[1-6]|blockquote|details|summary|sup|sub|del|ins|mark|ruby|rt|rp|section|article|aside|nav|header|footer|main|figure|figcaption|caption|col|colgroup|dd|dl|dt|fieldset|form|input|label|legend|meter|optgroup|option|output|progress|select|textarea|button|abbr|address|cite|dfn|kbd|s|samp|small|u|var|wbr|slot|template|component|transition|keep-alive|teleport|suspense)[\\s>/]/i;
-
-    if (!htmlTagRe.test(content)) {
-      return content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    return defaultHtmlInline(tokens, idx, options, env, self);
-  };
-}
-
-export default defineConfig({
-  title: ${JSON.stringify(title)},
-  description: ${JSON.stringify(`${title} — 架构分析、技术讨论、参考手册与路线图`)},
-  lang: "zh-CN",
-  srcDir: ${JSON.stringify(`./${WIKI_DIR}`)},
-  markdown: {
-    defaultHighlightLang: "typescript",
-    config: (md) => {
-      md.use(escapeAngleBrackets);
-    },
-  },
-  themeConfig: {
-    nav: wikiNav,
-    sidebar: wikiSidebar,
-    search: { provider: "local" },
-    ${social}
-    footer: {
-      message: "AI 辅助生成的技术文档",
-      copyright: ${JSON.stringify(title)},
-    },
-    docFooter: { prev: "上一篇", next: "下一篇" },
-    outline: { label: "目录", level: [2, 3] },
-    lastUpdated: { text: "最后更新于" },
-  },
-});
-`;
-}
-
 function main() {
   const { root, skillDir, title, github, force } = parseArgs(process.argv);
   const refs = path.join(skillDir, "references", "CONVENTIONS.md");
-  const tmplIndex = path.join(skillDir, "templates", "codebase-wiki-INDEX.md");
+  const assetsDir = path.join(skillDir, "assets", "vitepress");
 
   if (!fs.existsSync(refs)) {
     console.error(`Missing ${refs}`);
     process.exit(1);
   }
-  if (!fs.existsSync(tmplIndex)) {
-    console.error(`Missing ${tmplIndex}`);
+  if (!fs.existsSync(assetsDir)) {
+    console.error(`Missing assets directory: ${assetsDir}`);
     process.exit(1);
   }
 
-  const dirs = [
-    `${WIKI_DIR}/architecture`,
-    `${WIKI_DIR}/discussion`,
-    `${WIKI_DIR}/reference`,
-    `${WIKI_DIR}/roadmap`,
-    ".vitepress",
-  ];
-  for (const d of dirs) {
-    fs.mkdirSync(path.join(root, d), { recursive: true });
-  }
-
+  // 1. Create wiki content directories with .gitkeep
   for (const d of ["architecture", "discussion", "reference", "roadmap"]) {
-    const g = path.join(root, WIKI_DIR, d, ".gitkeep");
+    const dir = path.join(root, WIKI_DIR, d);
+    fs.mkdirSync(dir, { recursive: true });
+    const g = path.join(dir, ".gitkeep");
     if (!fs.existsSync(g)) fs.writeFileSync(g, "", "utf8");
   }
 
+  // 2. Copy CONVENTIONS.md into wiki root
   const conventionsDest = path.join(root, WIKI_DIR, "CONVENTIONS.md");
   if (!fs.existsSync(conventionsDest) || force) {
     fs.copyFileSync(refs, conventionsDest);
@@ -184,18 +137,45 @@ function main() {
     console.log(`Skip existing ${conventionsDest}`);
   }
 
-  const indexBody = fs
-    .readFileSync(tmplIndex, "utf8")
-    .replaceAll("__WIKI_TITLE__", title);
-  writeIfAbsent(path.join(root, WIKI_DIR, "INDEX.md"), indexBody, force);
+  // 3. Build replacement pairs
+  const socialLinks =
+    github && github.length > 0
+      ? `{ icon: "github", link: ${JSON.stringify(github)} }`
+      : "";
 
+  const replacements = [
+    ["__WIKI_TITLE__", title],
+    ["__SOCIAL_LINKS__", socialLinks],
+  ];
+
+  // 4. Copy assets/vitepress/ skeleton into target repo
+  //    - assets/vitepress/.vitepress/* → <root>/.vitepress/*
+  //    - assets/vitepress/INDEX.md    → <root>/codebase-wiki/INDEX.md
+  const vpAssetsDir = path.join(assetsDir, ".vitepress");
+  const vpDestDir = path.join(root, ".vitepress");
+  copyDirWithReplacements(vpAssetsDir, vpDestDir, replacements, force);
+
+  const indexSrc = path.join(assetsDir, "INDEX.md");
+  const indexDest = path.join(root, WIKI_DIR, "INDEX.md");
+  if (fs.existsSync(indexSrc)) {
+    if (!fs.existsSync(indexDest) || force) {
+      let content = fs.readFileSync(indexSrc, "utf8");
+      for (const [pattern, value] of replacements) {
+        content = content.replaceAll(pattern, value);
+      }
+      fs.writeFileSync(indexDest, content, "utf8");
+      console.log(`Wrote ${indexDest}`);
+    } else {
+      console.log(`Skip existing ${indexDest}`);
+    }
+  }
+
+  // 5. Merge package.json (keep our pinned versions)
   mergePackageJson(root);
 
+  // 6. Run regenerate-sidebar.mjs to create initial sidebar
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
   execFileSync(process.execPath, [regen, "--root", root], { stdio: "inherit" });
-
-  const vpConfig = path.join(root, ".vitepress", "config.mts");
-  writeIfAbsent(vpConfig, buildVitePressConfig(title, github), force);
 
   console.log("\nNext steps:");
   console.log("  pnpm add -D vitepress   # or npm/yarn if not already installed");

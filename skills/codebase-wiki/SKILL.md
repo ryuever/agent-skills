@@ -13,6 +13,12 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
 详细书写规范见本 skill 包内 `references/CONVENTIONS.md`；初始化后的目标仓库内会复制一份到 `codebase-wiki/CONVENTIONS.md`。
 
+各引擎的模板文件（配置、首页、侧栏占位等）存放在 `assets/` 目录下，初始化脚本通过复制 + 变量替换的方式生成骨架：
+
+- `assets/vitepress/` — VitePress 项目骨架（`.vitepress/config.mts`、`INDEX.md` 等）
+- `assets/mintlify/` — Mintlify 项目骨架（`docs.json`、`INDEX.mdx` 等）
+- `assets/starlight/` — Starlight/Astro 项目骨架（`astro.config.mjs`、`src/content/docs/index.mdx` 等）
+
 ## 首次接入（人类或 Agent 执行）
 
 1. 用 [skills CLI](https://github.com/vercel-labs/skills) 安装本 skill（示例）：
