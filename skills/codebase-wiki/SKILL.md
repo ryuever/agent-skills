@@ -78,6 +78,15 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 
 **正文**：中文为主，术语保留英文；源码引用写 `path/to/file.ts:行号-行号`；代码块标明语言。
 
+### 源码分析深度偏好
+
+生成 `architecture` 或 `reference` 类文档时，除架构概述外，应包含以下源码级细节（按需取舍，不必全部包含）：
+
+- **代码模式示例**：精选 2-3 个最典型的用法，附完整可运行代码块
+- **导入参考**：列出扩展开发所需的 `import` 语句（类型导入与值导入分开）
+- **行号引用**：关键实现标注 `file.ts:行号-行号`，便于跳转
+- **Type Guard 用法**：如有判别联合，说明正确的窄化方式与常见陷阱
+
 ### 第 4 步：维护 references（双向）
 
 为新文与被引用文同时更新 `references`，并更新被引用文的 `updated` 日期。`rel` 取值与反向关系见 `references/CONVENTIONS.md` 表格。
