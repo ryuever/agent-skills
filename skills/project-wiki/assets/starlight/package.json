@@ -1,0 +1,16 @@
+{
+  "name": "project-wiki-starlight",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "^0.38.3",
+    "astro": "^6.1.8",
+    "sharp": "^0.33.5"
+  }
+}

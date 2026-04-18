@@ -4,40 +4,36 @@
 // @ts-nocheck
 
 export const wikiSidebar = {
-  "/overview/": [
+  "/": [
     {
       "text": "项目地图",
       "items": [],
+      "collapsed": false,
     },
-  ],
-  "/architecture/": [
     {
       "text": "架构设计",
       "items": [],
+      "collapsed": false,
     },
-  ],
-  "/concepts/": [
     {
       "text": "核心概念",
       "items": [],
+      "collapsed": false,
     },
-  ],
-  "/modules/": [
     {
       "text": "核心模块",
       "items": [],
+      "collapsed": false,
     },
-  ],
-  "/dataflow/": [
     {
       "text": "数据流",
       "items": [],
+      "collapsed": false,
     },
-  ],
-  "/operations/": [
     {
       "text": "工程运维",
       "items": [],
+      "collapsed": false,
     },
   ],
 };

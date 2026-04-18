@@ -25,7 +25,7 @@ function escapeAngleBrackets(md: MarkdownIt) {
 
 export default defineConfig({
   title: "__WIKI_TITLE__",
-  description: "__WIKI_TITLE__ — 项目地图、架构、概念、模块与数据流",
+  description: "__WIKI_TITLE__ — DeepWiki 风格项目全景文档",
   lang: "zh-CN",
   srcDir: ".",
   markdown: {
@@ -34,17 +34,23 @@ export default defineConfig({
       md.use(escapeAngleBrackets);
     },
   },
+  // Enable mermaid if vitepress-plugin-mermaid is installed:
+  //   import { withMermaid } from "vitepress-plugin-mermaid";
+  //   export default withMermaid(defineConfig({ ... }));
   themeConfig: {
     nav: wikiNav,
     sidebar: wikiSidebar,
     search: { provider: "local" },
     socialLinks: [__SOCIAL_LINKS__],
     footer: {
-      message: "由 project-wiki skill 生成与维护",
+      message: "由 project-wiki skill 生成 · 以代码为唯一事实来源",
       copyright: "__WIKI_TITLE__",
     },
     docFooter: { prev: "上一篇", next: "下一篇" },
-    outline: { label: "目录", level: [2, 3] },
+    outline: { label: "页面导航", level: [2, 3] },
     lastUpdated: { text: "最后更新于" },
+    returnToTopLabel: "回到顶部",
+    sidebarMenuLabel: "目录",
+    darkModeSwitchLabel: "主题",
   },
 });

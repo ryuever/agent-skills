@@ -1,13 +1,20 @@
 #!/usr/bin/env node
-/** Markdown + VitePress root (nested under repo root). */
-const WIKI_DIR = "project-wiki";
-
 /**
- * Scaffold project-wiki/ + project-wiki/.vitepress for DeepWiki-style docs.
+ * Scaffold project-wiki/ with VitePress configuration.
  *
  * Usage (from target repo root):
- *   node <path-to-this-skill>/scripts/init-project-wiki.mjs --root .
+ *   node <path-to-this-skill>/scripts/init-project-wiki.mjs --root . --title "Project Wiki"
+ *
+ * Options:
+ *   --root <dir>       Target repository root (default: cwd)
+ *   --skill-dir <dir>  Path to the project-wiki skill folder (default: parent of scripts/)
+ *   --title <string>   Wiki title (default: Project Wiki)
+ *   --github <url>     Optional GitHub URL for VitePress social links
+ *   --stack <list>     Comma-separated: vitepress (default), mintlify, starlight, or all
+ *   --force            Overwrite generated files if they already exist
  */
+
+const WIKI_DIR = "project-wiki";
 
 import fs from "node:fs";
 import path from "node:path";
@@ -22,18 +29,30 @@ function parseArgs(argv) {
     skillDir: path.join(__dirname, ".."),
     title: "Project Wiki",
     github: "",
+    color: "#0D9373",
+    stack: "vitepress",
     force: false,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--root" && argv[i + 1]) out.root = path.resolve(argv[++i]);
-    else if (a === "--skill-dir" && argv[i + 1])
-      out.skillDir = path.resolve(argv[++i]);
+    else if (a === "--skill-dir" && argv[i + 1]) out.skillDir = path.resolve(argv[++i]);
     else if (a === "--title" && argv[i + 1]) out.title = argv[++i];
     else if (a === "--github" && argv[i + 1]) out.github = argv[++i];
+    else if (a === "--color" && argv[i + 1]) out.color = argv[++i];
+    else if (a === "--stack" && argv[i + 1]) out.stack = argv[++i];
     else if (a === "--force") out.force = true;
   }
   return out;
+}
+
+function stacksFromArg(stackArg) {
+  const s = String(stackArg || "vitepress").trim().toLowerCase();
+  if (s === "all") return new Set(["vitepress", "mintlify", "starlight"]);
+  const parts = s.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const allowed = new Set(["vitepress", "mintlify", "starlight"]);
+  const picked = parts.filter((p) => allowed.has(p));
+  return new Set(picked.length > 0 ? picked : ["vitepress"]);
 }
 
 function copyDirWithReplacements(srcDir, destDir, replacements, force) {
@@ -45,75 +64,87 @@ function copyDirWithReplacements(srcDir, destDir, replacements, force) {
       copyDirWithReplacements(srcPath, destPath, replacements, force);
     } else {
       if (fs.existsSync(destPath) && !force) {
-        console.log(`Skip existing ${destPath}`);
+        console.log(`  Skip existing ${destPath}`);
         continue;
       }
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       let content = fs.readFileSync(srcPath, "utf8");
-      for (const [pattern, value] of replacements) {
+      for (const [pattern, value] of Object.entries(replacements)) {
         content = content.replaceAll(pattern, value);
       }
       fs.writeFileSync(destPath, content, "utf8");
-      console.log(`Wrote ${destPath}`);
+      console.log(`  ✓ ${destPath}`);
     }
   }
 }
 
-function mergePackageJson(root) {
+function mergePackageJson(root, stacks) {
   const pkgPath = path.join(root, "package.json");
   let pkg = { name: path.basename(root), private: true, version: "0.0.0" };
   if (fs.existsSync(pkgPath)) {
     pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   }
   pkg.scripts = pkg.scripts || {};
-  const scripts = {
-    "docs:project-wiki:dev": `vitepress dev ${WIKI_DIR}`,
-    "docs:project-wiki:build": `vitepress build ${WIKI_DIR}`,
-    "docs:project-wiki:preview": `vitepress preview ${WIKI_DIR}`,
-  };
+  pkg.devDependencies = pkg.devDependencies || {};
   let changed = false;
-  for (const [k, v] of Object.entries(scripts)) {
-    if (!pkg.scripts[k]) {
-      pkg.scripts[k] = v;
+
+  if (stacks.has("vitepress")) {
+    const scripts = {
+      "docs:project-wiki:dev": `vitepress dev ${WIKI_DIR}`,
+      "docs:project-wiki:build": `vitepress build ${WIKI_DIR}`,
+      "docs:project-wiki:preview": `vitepress preview ${WIKI_DIR}`,
+    };
+    for (const [k, v] of Object.entries(scripts)) {
+      if (!pkg.scripts[k]) { pkg.scripts[k] = v; changed = true; }
+    }
+    if (!pkg.devDependencies.vitepress) {
+      pkg.devDependencies.vitepress = "^1.6.3";
       changed = true;
     }
   }
-  pkg.devDependencies = pkg.devDependencies || {};
-  if (!pkg.devDependencies.vitepress) {
-    pkg.devDependencies.vitepress = "^1.6.3";
-    changed = true;
+
+  if (stacks.has("mintlify")) {
+    const k = "docs:project-wiki:mintlify:dev";
+    const v = `node ${WIKI_DIR}/run-mintlify.mjs`;
+    if (!pkg.scripts[k]) { pkg.scripts[k] = v; changed = true; }
+    if (!pkg.devDependencies.mintlify) { pkg.devDependencies.mintlify = "^4.2.0"; changed = true; }
   }
+
+  if (stacks.has("starlight")) {
+    const scripts = {
+      "docs:project-wiki:starlight:dev": `npm run dev --prefix ${WIKI_DIR}/starlight`,
+      "docs:project-wiki:starlight:build": `npm run build --prefix ${WIKI_DIR}/starlight`,
+      "docs:project-wiki:starlight:preview": `npm run preview --prefix ${WIKI_DIR}/starlight`,
+    };
+    for (const [k, v] of Object.entries(scripts)) {
+      if (!pkg.scripts[k]) { pkg.scripts[k] = v; changed = true; }
+    }
+  }
+
   if (changed || !fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
-    console.log(`Updated ${pkgPath}`);
-  } else {
-    console.log("No package.json changes needed");
+    console.log(`  ✓ Updated ${pkgPath}`);
   }
 }
 
 function main() {
-  const { root, skillDir, title, github, force } = parseArgs(process.argv);
+  const { root, skillDir, title, github, color, stack, force } = parseArgs(process.argv);
+  const stacks = stacksFromArg(stack);
+
+  console.log(`\n🏗️  Initializing project-wiki in ${root}\n`);
+
   const refs = path.join(skillDir, "references", "CONVENTIONS.md");
-  const assetsDir = path.join(skillDir, "assets", "vitepress");
+  const vpAssetsDir = path.join(skillDir, "assets", "vitepress");
+  const mintAssetsDir = path.join(skillDir, "assets", "mintlify");
+  const starAssetsDir = path.join(skillDir, "assets", "starlight");
 
   if (!fs.existsSync(refs)) {
     console.error(`Missing ${refs}`);
     process.exit(1);
   }
-  if (!fs.existsSync(assetsDir)) {
-    console.error(`Missing assets directory: ${assetsDir}`);
-    process.exit(1);
-  }
 
-  const subdirs = [
-    "overview",
-    "architecture",
-    "concepts",
-    "modules",
-    "dataflow",
-    "operations",
-    ".meta",
-  ];
+  // Create subdirectories
+  const subdirs = ["overview", "architecture", "concepts", "modules", "dataflow", "operations", ".meta"];
   for (const d of subdirs) {
     const dir = path.join(root, WIKI_DIR, d);
     fs.mkdirSync(dir, { recursive: true });
@@ -121,57 +152,91 @@ function main() {
     if (!fs.existsSync(g)) fs.writeFileSync(g, "", "utf8");
   }
 
+  // Copy CONVENTIONS
   const conventionsDest = path.join(root, WIKI_DIR, "CONVENTIONS.md");
   if (!fs.existsSync(conventionsDest) || force) {
     fs.copyFileSync(refs, conventionsDest);
-    console.log(`Wrote ${conventionsDest}`);
-  } else {
-    console.log(`Skip existing ${conventionsDest}`);
+    console.log(`  ✓ ${conventionsDest}`);
   }
 
-  const socialLinks =
-    github && github.length > 0
-      ? `{ icon: "github", link: ${JSON.stringify(github)} }`
-      : "";
+  const socialLinks = github ? `{ icon: "github", link: ${JSON.stringify(github)} }` : "";
+  const starlightSocial = github
+    ? `\n      social: [{ icon: "github", label: "GitHub", href: ${JSON.stringify(github)} }],`
+    : "";
 
-  const replacements = [
-    ["__WIKI_TITLE__", title],
-    ["__SOCIAL_LINKS__", socialLinks],
-  ];
+  // VitePress (default)
+  if (stacks.has("vitepress") && fs.existsSync(vpAssetsDir)) {
+    const vpReplacements = { __WIKI_TITLE__: title, __SOCIAL_LINKS__: socialLinks };
+    copyDirWithReplacements(
+      path.join(vpAssetsDir, ".vitepress"),
+      path.join(root, WIKI_DIR, ".vitepress"),
+      vpReplacements, force,
+    );
 
-  const vpAssetsDir = path.join(assetsDir, ".vitepress");
-  const vpDestDir = path.join(root, WIKI_DIR, ".vitepress");
-  copyDirWithReplacements(vpAssetsDir, vpDestDir, replacements, force);
-
-  const indexSrc = path.join(assetsDir, "INDEX.md");
-  const indexDest = path.join(root, WIKI_DIR, "INDEX.md");
-  if (fs.existsSync(indexSrc)) {
-    if (!fs.existsSync(indexDest) || force) {
+    const indexSrc = path.join(vpAssetsDir, "INDEX.md");
+    const indexDest = path.join(root, WIKI_DIR, "INDEX.md");
+    if (fs.existsSync(indexSrc) && (!fs.existsSync(indexDest) || force)) {
       let content = fs.readFileSync(indexSrc, "utf8");
-      for (const [pattern, value] of replacements) {
-        content = content.replaceAll(pattern, value);
-      }
+      for (const [p, v] of Object.entries(vpReplacements)) content = content.replaceAll(p, v);
       fs.writeFileSync(indexDest, content, "utf8");
-      console.log(`Wrote ${indexDest}`);
-    } else {
-      console.log(`Skip existing ${indexDest}`);
+      console.log(`  ✓ ${indexDest}`);
     }
   }
 
-  mergePackageJson(root);
+  // Mintlify (optional backward compat)
+  if (stacks.has("mintlify") && fs.existsSync(mintAssetsDir)) {
+    copyDirWithReplacements(
+      mintAssetsDir,
+      path.join(root, WIKI_DIR),
+      { __WIKI_TITLE__: title, __PRIMARY_COLOR__: color },
+      force,
+    );
+  }
 
+  // Starlight (optional backward compat)
+  if (stacks.has("starlight") && fs.existsSync(starAssetsDir)) {
+    copyDirWithReplacements(
+      starAssetsDir,
+      path.join(root, WIKI_DIR, "starlight"),
+      { __WIKI_TITLE__: title, __SOCIAL_LINKS__: starlightSocial },
+      force,
+    );
+    // Write conventions as starlight doc
+    const starlightConvDest = path.join(root, WIKI_DIR, "starlight", "src", "content", "docs", "conventions.md");
+    if (!fs.existsSync(starlightConvDest) || force) {
+      const convContent = fs.readFileSync(refs, "utf8");
+      fs.mkdirSync(path.dirname(starlightConvDest), { recursive: true });
+      fs.writeFileSync(starlightConvDest,
+        `---\ntitle: 文档书写规范\ndescription: project-wiki 文档书写规范\n---\n\n${convContent}`, "utf8");
+      console.log(`  ✓ ${starlightConvDest}`);
+    }
+  }
+
+  // Merge package.json
+  mergePackageJson(root, stacks);
+
+  // Run sidebar regeneration
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
   execFileSync(process.execPath, [regen, "--root", root], { stdio: "inherit" });
 
-  console.log("\nNext steps:");
-  console.log("  pnpm add -D vitepress");
-  console.log("  pnpm run docs:project-wiki:dev");
-  console.log(
-    `  node <skill-dir>/scripts/analyze-repo.mjs --root . --out-dir ${WIKI_DIR}`,
-  );
-  console.log(
-    `  After adding Markdown under ${WIKI_DIR}/, re-run: node <skill-dir>/scripts/regenerate-sidebar.mjs --root .`,
-  );
+  // Print next steps
+  console.log("\n📋 Next steps:\n");
+  if (stacks.has("vitepress")) {
+    console.log("  pnpm add -D vitepress");
+    console.log("  pnpm run docs:project-wiki:dev");
+  }
+  if (stacks.has("mintlify")) {
+    console.log("  pnpm add -D mintlify");
+    console.log("  pnpm run docs:project-wiki:mintlify:dev");
+  }
+  if (stacks.has("starlight")) {
+    console.log(`  cd ${WIKI_DIR}/starlight && pnpm install && pnpm dev`);
+  }
+  console.log(`\n  # Run analysis:`);
+  console.log(`  node <skill-dir>/scripts/analyze-repo.mjs --root . --out-dir ${WIKI_DIR}`);
+  console.log(`\n  # After adding Markdown:`);
+  console.log(`  node <skill-dir>/scripts/regenerate-sidebar.mjs --root .`);
+  console.log("");
 }
 
 main();

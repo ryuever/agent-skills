@@ -9,7 +9,7 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 | Skill | Summary |
 | --- | --- |
 | [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site and regenerate sidebar/nav. |
-| [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project map: Node `analyze-repo.mjs` emits `.meta` + `doc_plan.json`, then author panorama pages under `project-wiki/`; nested VitePress in `project-wiki/.vitepress` (scripts `docs:project-wiki:*`). |
+| [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
 
 ## Install (Cursor & others)
 
@@ -52,22 +52,48 @@ After you add or rename Markdown files under `codebase-wiki/architecture|discuss
 node ./.cursor/skills/codebase-wiki/scripts/regenerate-sidebar.mjs --root .
 ```
 
-## Bootstrap nested VitePress + `project-wiki/` in a target repo
+## Bootstrap `project-wiki/` in a target repo
 
 From the **target project root** (after the skill is installed):
 
 ```bash
+# Initialize with VitePress (default)
 node ./.cursor/skills/project-wiki/scripts/init-project-wiki.mjs --root . --title "Project Wiki"
-pnpm add -D vitepress
+
+# Or enable all three engines at once
+node ./.cursor/skills/project-wiki/scripts/init-project-wiki.mjs --root . --title "Project Wiki" --stack all
+
+# Run deep analysis (import graph, route/state detection, file stats)
 node ./.cursor/skills/project-wiki/scripts/analyze-repo.mjs --root . --out-dir project-wiki
-pnpm run docs:project-wiki:dev
 ```
+
+Optional flags: `--github <url>`, `--force`, `--stack <list>` (comma-separated: `vitepress`, `mintlify`, `starlight`, or `all`).
+
+### Preview by engine
+
+```bash
+# VitePress (default)
+pnpm add -D vitepress
+pnpm run docs:project-wiki:dev
+
+# Mintlify (requires --stack mintlify or all)
+pnpm add -D mintlify
+pnpm run docs:project-wiki:mintlify:dev
+
+# Starlight (requires --stack starlight or all)
+cd project-wiki/starlight && npm install && cd ../..
+pnpm run docs:project-wiki:starlight:dev
+```
+
+### Regenerate sidebar
 
 After adding or renaming Markdown under `project-wiki/overview|architecture|concepts|modules|dataflow|operations/`:
 
 ```bash
 node ./.cursor/skills/project-wiki/scripts/regenerate-sidebar.mjs --root .
 ```
+
+This updates **all** initialized engines' sidebars simultaneously (VitePress, Mintlify, Starlight).
 
 ## Update
 

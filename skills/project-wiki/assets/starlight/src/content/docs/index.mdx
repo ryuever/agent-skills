@@ -1,0 +1,49 @@
+---
+title: __WIKI_TITLE__
+description: "__WIKI_TITLE__ — DeepWiki 风格项目全景文档"
+template: splash
+hero:
+  title: __WIKI_TITLE__
+  tagline: 由代码分析驱动的 DeepWiki 风格知识库
+  actions:
+    - text: 开始阅读 →
+      link: /overview/1-introduction/
+      icon: right-arrow
+    - text: 扫描报告
+      link: /quality-report/
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+> 本文档以代码为唯一事实来源。分析脚本产出 import 图谱、路由/状态/网络层检测等元数据，驱动 Agent 按层级编号撰写全景文档。
+> 正文 Markdown 位于仓库的 `project-wiki/overview|architecture|.../`；本站点由 `regenerate-sidebar.mjs` 同步到此处。
+
+## 快速导航
+
+<CardGrid>
+  <Card title="1. 项目地图" icon="seti:folder">
+    仓库结构、技术栈信号、推荐阅读顺序。
+  </Card>
+  <Card title="2. 架构设计" icon="pencil">
+    系统分层、组件体系、路由设计与边界约束。
+  </Card>
+  <Card title="3. 核心概念" icon="information">
+    领域术语、关键类型与环境配置索引。
+  </Card>
+  <Card title="4. 核心模块" icon="document">
+    按目录/包剖析职责、导出 API 与依赖关系。
+  </Card>
+  <Card title="5. 数据流" icon="forward">
+    请求路径、状态管理、错误传播与缓存策略。
+  </Card>
+  <Card title="6. 工程运维" icon="setting">
+    构建、测试、CI/CD 与环境变量说明。
+  </Card>
+</CardGrid>
+
+## 文档索引
+
+各分类下的页面由 `analyze-repo.mjs` 与 `doc_plan.json` 驱动生成；新增带 `section` frontmatter 的 Markdown 后，在仓库根执行 `regenerate-sidebar.mjs` 以同步到 Starlight 并更新侧栏。
+
+书写规范见 [CONVENTIONS](/conventions/)。

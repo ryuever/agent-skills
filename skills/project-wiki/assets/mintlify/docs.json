@@ -1,0 +1,53 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "__WIKI_TITLE__",
+  "colors": {
+    "primary": "__PRIMARY_COLOR__",
+    "light": "__PRIMARY_COLOR__",
+    "dark": "__PRIMARY_COLOR__"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "首页",
+        "pages": ["INDEX"]
+      },
+      {
+        "group": "1. 项目地图",
+        "icon": "map",
+        "pages": []
+      },
+      {
+        "group": "2. 架构设计",
+        "icon": "building",
+        "pages": []
+      },
+      {
+        "group": "3. 核心概念",
+        "icon": "lightbulb",
+        "pages": []
+      },
+      {
+        "group": "4. 核心模块",
+        "icon": "folder",
+        "pages": []
+      },
+      {
+        "group": "5. 数据流",
+        "icon": "arrow-right",
+        "pages": []
+      },
+      {
+        "group": "6. 工程运维",
+        "icon": "server",
+        "pages": []
+      }
+    ]
+  },
+  "mermaid": {},
+  "footer": {
+    "socials": {}
+  }
+}

@@ -1,134 +1,199 @@
 ---
 name: project-wiki
-description: "为仓库生成 DeepWiki 风格的项目全景文档：先运行 Node 分析脚本产出 project-wiki/.meta 结构化元数据与 doc_plan，再按模板撰写架构、概念、模块、数据流等页面；可选嵌套 VitePress（project-wiki/.vitepress）。适用于「项目 wiki / deep wiki / 全景文档 / 新人 onboarding 地图」等意图。"
+description: "为仓库生成 DeepWiki 风格的项目全景文档：先运行 Node 分析脚本产出结构化元数据（import 图谱、路由/状态检测、文件统计），再按层级编号撰写架构、概念、模块、数据流等页面；支持 VitePress（默认）、Mintlify、Starlight 三套文档引擎。适用于「project wiki / deep wiki / 全景文档 / 新人 onboarding」等意图。"
 ---
 
-# Project wiki（DeepWiki 风格项目全景）
+# Project Wiki（DeepWiki 风格项目全景）
 
-本 skill 把**代码当作唯一事实来源**，在仓库根目录生成 **`project-wiki/`**：默认包含 **分析元数据**（`project-wiki/.meta/*.json`）、**质量说明**（`project-wiki/quality-report.md`），以及由 Agent 根据 `doc_plan.json` 撰写的 **全景 Markdown**（架构、概念、模块、数据流等）。可选 **VitePress** 站点，配置位于 `project-wiki/.vitepress/`（与 `codebase-wiki` 的根级 `.vitepress` 不冲突，适合同一仓库并存）。
+本 skill 把**代码当作唯一事实来源**，在仓库根目录生成 **`project-wiki/`**：包含**分析元数据**（`.meta/*.json`）、**扫描报告**（`quality-report.md`）以及 Agent 根据 `doc_plan.json` 撰写的**全景 Markdown**——按编号分层（`1-Introduction > 1.1-Core Packages > 1.2-Vue3 vs Vue2`），对标 [DeepWiki](https://deepwiki.com/) 的阅读体验。
 
-灵感来源：[codewiki-generator](https://skills.sh/samzong/samzong/codewiki-generator)（分析脚本 + `doc_plan` + 证据链写作）与 [DeepWiki](https://deepwiki.com/)（自上而下读项目的体验）。本实现使用 **纯 Node**，无需 Python，便于前端仓库直接使用。
+支持 **三套文档引擎**，均可独立或同时启用：
+
+| 引擎 | 目录 | 特点 |
+|------|------|------|
+| **VitePress**（默认） | `project-wiki/.vitepress/` | Vue 生态、Mermaid 内建、本地搜索 |
+| **Mintlify** | `project-wiki/docs.json` | 嵌套 navigation groups、`mermaid` 配置、托管部署简单 |
+| **Starlight** | `project-wiki/starlight/` | Astro 驱动、`{ label, items }` 嵌套侧栏、多框架组件 |
+
+灵感来源：[codewiki-generator](https://skills.sh/samzong/samzong/codewiki-generator)（分析脚本 + `doc_plan` + 证据链写作）与 [DeepWiki](https://deepwiki.com/)（自上而下全景阅读）。
 
 ## 与 codebase-wiki 的分工
 
 | | codebase-wiki | project-wiki |
 |---|----------------|---------------|
-| 节奏 | 对话中边学边记 | 一次性或周期性「扫仓库 → 出地图」 |
-| 内容 | 任意主题的笔记 | 预设全景模块（架构 / 概念 / 模块 / 数据流等） |
-| 元数据 | 以 INDEX + references 为主 | `.meta/*.json` + `doc_plan.json` 驱动页面集合 |
+| 节奏 | 对话中边学边记 | 一次性「扫仓库 → 出全景」 |
+| 内容 | 任意主题笔记 | 层级化全景文档（编号目录树） |
+| 驱动 | 用户输入驱动 | `.meta/*.json` 元数据驱动 |
+| 适合 | 长期增量笔记 | onboarding、系统设计叙事 |
 
-两者可同时安装；`project-wiki` 侧重 **onboarding 与系统设计叙事**，`codebase-wiki` 侧重 **长期增量笔记**。
+两者可同时安装，互不冲突。
 
-## 首次接入（人类或 Agent）
+## 首次接入
 
-1. 安装 skill（示例）：
+1. 安装 skill：
 
    ```bash
    npx skills add <your-github>/agent-skills --skill project-wiki -a cursor -y
    ```
 
-2. 在**目标仓库根目录**初始化 VitePress 骨架（将 `<skill-dir>` 换为 skill 目录）：
+2. 初始化骨架（`<skill-dir>` 为 skill 目录）：
 
    ```bash
+   # 仅 VitePress（默认）
    node <skill-dir>/scripts/init-project-wiki.mjs --root . --title "Project Wiki"
+
+   # 同时启用 Mintlify
+   node <skill-dir>/scripts/init-project-wiki.mjs --root . --title "Project Wiki" --stack mintlify
+
+   # 同时启用 Starlight
+   node <skill-dir>/scripts/init-project-wiki.mjs --root . --title "Project Wiki" --stack starlight
+
+   # 三套全开
+   node <skill-dir>/scripts/init-project-wiki.mjs --root . --title "Project Wiki" --stack all
    ```
 
-3. 安装 VitePress 并预览：
+   常用参数：`--github <url>`（社交链接）、`--force`（覆盖已有文件）、`--stack <list>`（逗号分隔或 `all`）。
+
+3. 安装依赖并预览：
 
    ```bash
+   # VitePress（默认）
    pnpm add -D vitepress
    pnpm run docs:project-wiki:dev
+
+   # Mintlify（需 --stack mintlify 或 all）
+   pnpm add -D mintlify
+   pnpm run docs:project-wiki:mintlify:dev
+
+   # Starlight（需 --stack starlight 或 all）
+   cd project-wiki/starlight && npm install && cd ../..
+   pnpm run docs:project-wiki:starlight:dev
    ```
 
-4. **新增或重命名** `project-wiki/` 下各子目录的 `.md` 后，在仓库根执行：
+4. 新增或重命名 `.md` 后：
 
    ```bash
    node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
    ```
 
+   该脚本会**同时更新**所有已初始化的引擎侧栏（VitePress `.vitepress/sidebar.generated.mts`、Mintlify `docs.json`、Starlight `.starlight/sidebar.generated.mjs`）。
+
 ## 核心工作流（Agent）
 
-### 0) 文档语言
+### 0) 语言 & 站点初始化
 
-询问用户：「文档正文使用哪种语言？（如 English / 中文）」若未指定，**默认中文**（本仓库用户多为中文语境；英文项目可显式选 English）。
+- 询问用户：「文档正文使用哪种语言？」未指定则**默认中文**
+- 若 `project-wiki/` 目录不存在，先运行 `init-project-wiki.mjs`
 
-### 1) 代码优先
-
-扫描源码、构建配置、入口、路由、状态管理、API 层等；`README` / `docs/` 仅作线索，**以代码为准**，并在文中标注文档与代码不一致之处。
-
-### 2) 运行分析脚本（必做）
-
-在**目标仓库根目录**执行（`<skill-dir>` 为含 `scripts/` 的 skill 路径）：
+### 1) 运行分析脚本（必做）
 
 ```bash
 node <skill-dir>/scripts/analyze-repo.mjs --root . --out-dir project-wiki
 ```
 
-产出：
+产出 `project-wiki/.meta/` 下：
+- `repo.json` — 包信息、技术栈信号、scripts
+- `structure.json` — 目录结构、配置文件、**文件统计**（源码/测试/样式/总量）、最大文件
+- `entrypoints.json` — 入口文件、workspace 包、**路由检测**、**状态管理检测**、**网络层检测**、**组件体系检测**
+- `imports.json` — **import 图谱**（Hub 文件、Heavy importers、高频外部依赖）
+- `doc_plan.json` — **层级编号**的页面计划（`section: "1.1"`, `slug`, `required`, `evidence`, `hints`）
 
-- `project-wiki/.meta/repo.json` — 包名、脚本摘要、依赖信号（React/Vue/Next 等）
-- `project-wiki/.meta/structure.json` — 顶层目录与关键配置文件路径
-- `project-wiki/.meta/entrypoints.json` — 推断的入口文件列表
-- `project-wiki/.meta/doc_plan.json` — 建议页面列表（含 `slug`、`required`、证据路径）
-- `project-wiki/quality-report.md` — 扫描覆盖说明与后续人工补强建议
+### 2) 代码优先 & 阅读 references
 
-### 3) 阅读 `references/` 后撰写
+扫描源码、构建配置、入口、路由、状态管理、API 层；`README` / `docs/` 仅作线索，**以代码为准**。
 
-- `references/structure-and-heuristics.md` — 何时合并/拆分页面、如何根据证据取舍
-- `references/doc-templates.md` — 各页面类型的固定章节与 Mermaid 建议
-- `references/FRONTEND-FOCUS.md` — **前端专项**：路由、状态、请求层、构建工具、Monorepo 应用边界
+写前必读：
+- `references/doc-templates.md` — DeepWiki 风格的页面模板
+- `references/structure-and-heuristics.md` — 页面集合启发式规则
+- `references/FRONTEND-FOCUS.md` — 前端专项阅读清单
 
-按 `doc_plan.json` 逐页编写；**无证据支撑的页面可跳过**，并在 `quality-report.md` 或页内「待验证」小节说明。
+### 3) 按 doc_plan 逐页撰写
 
-### 4) 写作质量条（与 codewiki-generator 对齐）
+遵循 `doc_plan.json` 中的 `section` 编号顺序：
 
-- **Visual first**：用 Mermaid（flowchart / sequence / 简化 C4）表达主流程与数据流
-- **Linked**：关键论断绑定到 `path/to/file.ts` 或 frontmatter `evidence`
-- **Opinionated**：写明设计取舍、技术债与风险（基于代码，非臆测）
-- **Mermaid 安全**：节点 ID 简单；标签避免 `/`、`:`、括号滥用（见模板说明）
+1. **文件命名**：`{section}-{slug最后一段}.md`（如 `1-introduction.md`、`1.1-monorepo-layout.md`）
+2. **放置目录**：按 `category` 放入对应子目录（`overview/`、`architecture/`、`modules/`、`dataflow/`、`operations/`）
+3. **无证据支撑**的页面（`evidence` 为空且 `required: false`）**可跳过**，在 `quality-report.md` 说明
 
-每篇正文建议以「相关代码」开头（可用 ` ```text ` 代码块列出证据路径，非一级标题），再展开叙述。
+### 4) 写作质量条（DeepWiki 标准）
 
-### 5) 刷新侧栏
+每个页面开头必须有 **Relevant source files** 区块：
 
-撰写或移动 Markdown 后：
+````markdown
+```text
+相关源文件：
+- src/main.tsx
+- src/router/index.ts
+- src/store/user.ts
+```
+````
+
+然后：
+- **Visual first** — 用 Mermaid（flowchart / sequence / C4 简化）表达主流程
+- **表格优先** — 配置、API、对比等用表格而非长段落
+- **Linked** — 关键论断绑定到 `path/to/file.ts:12-40`（可点击跳转源码）
+- **Opinionated** — 写明设计取舍、技术债与风险（基于代码，非臆测）
+- **层级递进** — 从顶层概述到子系统细节，章节编号与 `doc_plan.section` 一致
+- **Mermaid 安全** — 节点 ID 简单；标签避免 `/`、`:`、括号
+
+### 5) 刷新导航
 
 ```bash
 node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 ```
 
+脚本会自动检测已初始化的引擎并更新对应侧栏：
+- **VitePress** → `project-wiki/.vitepress/sidebar.generated.mts`（全局 `"/"` key，层级编号分组）
+- **Mintlify** → `project-wiki/docs.json`（嵌套 `{ group, pages }` 结构）
+- **Starlight** → `project-wiki/starlight/.starlight/sidebar.generated.mjs`（`{ label, items }` 嵌套）
+
 ### 6) 交付说明
 
-向用户报告：已生成/更新的文件、`doc_plan` 中跳过的页、如何运行 `docs:project-wiki:dev`。
+向用户报告：
+- 已生成的文件列表（含编号）
+- `doc_plan` 中跳过的页面及原因
+- 预览命令（按已启用的引擎列出）：
+  - VitePress: `pnpm run docs:project-wiki:dev`
+  - Mintlify: `pnpm run docs:project-wiki:mintlify:dev`
+  - Starlight: `pnpm run docs:project-wiki:starlight:dev`
 
 ## 目录约定（`project-wiki/`）
 
-| 子目录 | 用途 |
-|--------|------|
-| `overview/` | 项目地图、仓库结构、技术栈摘要 |
-| `architecture/` | 分层、边界、关键设计决策 |
-| `concepts/` | 核心概念与术语表 |
-| `modules/` | 重要目录/包/子应用职责 |
-| `dataflow/` | 请求/状态/事件/渲染数据流 |
-| `operations/` | 构建、测试、环境变量、发布（有证据才写） |
-| `.meta/` | 仅机器生成 JSON，一般不手写 |
+| 子目录 | 用途 | 编号前缀 |
+|--------|------|----------|
+| `overview/` | 项目简介、仓库结构、技术栈总览 | `1.x` |
+| `architecture/` | 系统分层、组件体系、路由设计 | `2.x` |
+| `concepts/` | 核心概念与术语表 | `3.x` |
+| `modules/` | 核心模块/包职责剖析 | `4.x` |
+| `dataflow/` | 数据流、状态管理、API 层 | `5.x` |
+| `operations/` | 构建、测试、部署 | `6.x` |
+| `.meta/` | 机器生成 JSON，不手写 | — |
 
-页面 `id` 前缀：`O` overview、`A` architecture、`G` concepts、`M` modules、`F` dataflow、`P` operations（与 `regenerate-sidebar` 分组一致）。
+文件命名示例：
+- `overview/1-introduction.md`
+- `overview/1.1-monorepo-layout.md`
+- `architecture/2-system-architecture.md`
+- `architecture/2.1-component-system.md`
+- `modules/4-core-modules.md`
+- `modules/4.1-apps-web.md`
 
 ## 何时使用
 
 - 用户要 **DeepWiki / project wiki / 项目地图 / 架构总览 / 新人文档**
-- 用户是 **前端**，希望快速理解 **路由、状态、数据请求、Monorepo 边界**
+- 用户是 **前端**，希望快速理解 **路由、状态、数据请求、组件体系**
 - 需要 **可浏览的静态站点** + **可重复运行的分析步骤**
 
 ## 资源索引
 
 | 路径 | 说明 |
 |------|------|
-| `scripts/analyze-repo.mjs` | 扫描仓库 → `.meta` + `quality-report.md` |
-| `scripts/init-project-wiki.mjs` | 嵌套 VitePress + 目录骨架 + `package.json` 脚本 |
-| `scripts/regenerate-sidebar.mjs` | 根据 frontmatter 生成 `sidebar.generated.mts` |
-| `references/doc-templates.md` | 页面模板 |
+| `scripts/analyze-repo.mjs` | 深度扫描仓库 → `.meta/*.json`（含 import 图谱、路由/状态检测） |
+| `scripts/init-project-wiki.mjs` | 目录骨架 + 三套引擎配置 + `package.json` 脚本（`--stack` 参数） |
+| `scripts/regenerate-sidebar.mjs` | 三套引擎侧栏更新（VitePress / Mintlify / Starlight，均支持编号层级） |
+| `references/doc-templates.md` | DeepWiki 风格页面模板 |
 | `references/structure-and-heuristics.md` | 页面集合与启发式规则 |
 | `references/FRONTEND-FOCUS.md` | 前端阅读清单 |
-| `references/CONVENTIONS.md` | frontmatter 与文件命名（可与 codebase-wiki 对照） |
+| `references/CONVENTIONS.md` | 文件命名与 frontmatter 规范 |
+| `assets/vitepress/` | VitePress 模板（`.vitepress/config.mts`、`INDEX.md`、`sidebar.generated.mts`） |
+| `assets/mintlify/` | Mintlify 模板（`docs.json`、`INDEX.mdx`、`run-mintlify.mjs`、`favicon.svg`） |
+| `assets/starlight/` | Starlight 模板（`astro.config.mjs`、`package.json`、`sidebar.generated.mjs`） |
