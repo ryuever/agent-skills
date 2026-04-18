@@ -194,11 +194,13 @@ references:
 
 ---
 
-## 7. VitePress 侧边栏同步
+## 7. 侧边栏与导航同步
 
-当 `codebase-wiki/` 下文档发生变化（新增、重命名、删除）时，应更新侧边栏与顶部导航。
+当 `codebase-wiki/` 下文档发生变化（新增、重命名、删除）时，应更新侧边栏与顶部导航。根据项目使用的文档引擎选择对应方式。
 
-### 7.1 推荐：运行生成脚本
+### 7.1 VitePress
+
+#### 7.1.1 推荐：运行生成脚本
 
 在**目标仓库根目录**执行（将 `<skill-dir>` 替换为已安装的 `codebase-wiki` skill 目录，内含 `scripts/`）：
 
@@ -208,7 +210,7 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 
 该脚本会扫描 `codebase-wiki/architecture|discussion|reference|roadmap` 下的 Markdown（读取 frontmatter 的 `id` 与 `title`），重写 `.vitepress/sidebar.generated.mts`。`.vitepress/config.mts` 从该文件导入 `wikiNav` 与 `wikiSidebar`。
 
-### 7.2 手动维护（备选）
+#### 7.1.2 手动维护（备选）
 
 若未使用生成脚本，则需手工编辑 `.vitepress/config.mts`：
 
@@ -217,3 +219,45 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 3. **删除文档**：从 `sidebar` 和 `nav` 中移除对应条目
 4. 侧边栏条目按编号升序排列
 5. `nav` 顶部导航的链接应指向每个分类的第一篇文档
+
+### 7.2 Mintlify
+
+#### 7.2.1 推荐：运行生成脚本
+
+在**目标仓库根目录**执行：
+
+```bash
+node <skill-dir>/scripts/regenerate-navigation.mjs --root .
+```
+
+该脚本会扫描 `codebase-wiki/architecture|discussion|reference|roadmap` 下的 Markdown（读取 frontmatter 的 `id`），重写 `codebase-wiki/docs.json` 中的 `navigation.groups`。
+
+#### 7.2.2 手动维护（备选）
+
+若未使用生成脚本，则需手工编辑 `codebase-wiki/docs.json`：
+
+1. **新增文档**：在对应分类的 `pages` 数组中添加条目，格式为 `"分类/文件名(不含.md)"`
+2. **重命名文档**：更新 `pages` 数组中对应的路径
+3. **删除文档**：从 `pages` 数组中移除对应条目
+4. 页面条目按编号升序排列
+
+### 7.3 Starlight（Astro）
+
+#### 7.3.1 推荐：运行生成脚本
+
+在**目标仓库根目录**执行：
+
+```bash
+node <skill-dir>/scripts/regenerate-starlight-sidebar.mjs --root .
+```
+
+该脚本会扫描 `src/content/docs/architecture|discussion|reference|roadmap` 下的 Markdown（读取 frontmatter 的 `id` 与 `title`），重写 `.starlight/sidebar.generated.mjs`。`astro.config.mjs` 从该文件导入 `starlightSidebar`。
+
+#### 7.3.2 手动维护（备选）
+
+若未使用生成脚本，则需手工编辑 `astro.config.mjs` 中 `starlight()` 集成的 `sidebar` 配置：
+
+1. **新增文档**：在对应分类的 `items` 数组中添加条目，格式为 `{ slug: "分类/文件名(不含.md)" }`
+2. **重命名文档**：更新 `items` 数组中对应的 `slug`
+3. **删除文档**：从 `items` 数组中移除对应条目
+4. 也可使用 `autogenerate: { directory: "分类" }` 让 Starlight 自动生成该分类的侧边栏

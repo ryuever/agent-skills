@@ -1,11 +1,15 @@
 ---
 name: codebase-wiki
-description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；可选 VitePress 站点。适用于“保存到 wiki / 归档到 codebase-wiki / 生成学习笔记”等意图。"
+description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；可选 VitePress 或 Mintlify 站点。适用于"保存到 wiki / 归档到 codebase-wiki / 生成学习笔记"等意图。"
 ---
 
 # Codebase wiki（知识库目录）
 
-把当前对话中的分析整理为**可长期维护**的文档，写入目标仓库根目录的 **`codebase-wiki/`**，并与 **VitePress**（`srcDir: ./codebase-wiki`）约定对齐。
+把当前对话中的分析整理为**可长期维护**的文档，写入目标仓库根目录的 **`codebase-wiki/`**，并支持三种文档引擎：
+
+- **VitePress**（`srcDir: ./codebase-wiki`）—— 默认选项
+- **Mintlify**（内容目录 `codebase-wiki/`，配置文件 `codebase-wiki/docs.json`）
+- **Starlight**（Astro 集成，内容目录 `src/content/docs/`，配置文件 `astro.config.mjs`）
 
 详细书写规范见本 skill 包内 `references/CONVENTIONS.md`；初始化后的目标仓库内会复制一份到 `codebase-wiki/CONVENTIONS.md`。
 
@@ -17,26 +21,72 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
    npx skills add <your-github>/agent-skills --skill codebase-wiki -a cursor -y
    ```
 
-2. 在**目标仓库根目录**生成 `codebase-wiki/` + `.vitepress/` 骨架（将 `<skill-dir>` 换成已安装的 `codebase-wiki` 目录，内含 `scripts/`）：
+2. 根据所选引擎，在**目标仓库根目录**生成骨架（将 `<skill-dir>` 换成已安装的 `codebase-wiki` 目录，内含 `scripts/`）：
+
+### 方案 A：VitePress（默认）
 
    ```bash
    node <skill-dir>/scripts/init-vitepress.mjs --root . --title "我的 Wiki"
    ```
 
-3. 安装 VitePress 并本地预览：
+   安装 VitePress 并本地预览：
 
    ```bash
    pnpm add -D vitepress
    pnpm run docs:wiki:dev
    ```
 
-之后归档文档时，Agent 只需遵循下方工作流；**新增/重命名** Markdown 后，在仓库根执行：
+   **新增/重命名** Markdown 后，在仓库根执行：
 
-```bash
-node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
-```
+   ```bash
+   node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
+   ```
 
-以重写 `.vitepress/sidebar.generated.mts`（导航与侧栏从各篇 frontmatter 的 `id`、`title` 生成）。
+   以重写 `.vitepress/sidebar.generated.mts`（导航与侧栏从各篇 frontmatter 的 `id`、`title` 生成）。
+
+### 方案 B：Mintlify
+
+   ```bash
+   node <skill-dir>/scripts/init-mintlify.mjs --root . --title "我的 Wiki" --color "#0D9373"
+   ```
+
+   安装 Mintlify CLI 并本地预览：
+
+   ```bash
+   npm i -g mint
+   cd codebase-wiki && mint dev
+   ```
+
+   **新增/重命名** Markdown 后，在仓库根执行：
+
+   ```bash
+   node <skill-dir>/scripts/regenerate-navigation.mjs --root .
+   ```
+
+   以重写 `codebase-wiki/docs.json` 中的 `navigation.groups`（从各篇 frontmatter 的 `id`、`title` 生成）。
+
+### 方案 C：Starlight（Astro）
+
+   ```bash
+   node <skill-dir>/scripts/init-starlight.mjs --root . --title "我的 Wiki"
+   ```
+
+   安装依赖并本地预览：
+
+   ```bash
+   pnpm install
+   pnpm run docs:wiki:dev
+   ```
+
+   **新增/重命名** Markdown 后，在仓库根执行：
+
+   ```bash
+   node <skill-dir>/scripts/regenerate-starlight-sidebar.mjs --root .
+   ```
+
+   以重写 `.starlight/sidebar.generated.mjs`（侧栏从各篇 frontmatter 的 `id`、`title` 生成）。
+
+   > Starlight 的内容目录为 `src/content/docs/`（Astro 内容集合规范），文档按 `architecture/`、`discussion/`、`reference/`、`roadmap/` 子目录组织。
 
 ## 何时使用
 
@@ -95,13 +145,18 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 
 在 `codebase-wiki/INDEX.md` 对应分类表格中追加一行：编号、链接、标题、概述。
 
-### 第 6 步：同步 VitePress 侧栏与导航
+### 第 6 步：同步侧栏与导航
 
-**优先**：在仓库根运行
+根据项目使用的文档引擎执行对应脚本：
 
-`node <skill-dir>/scripts/regenerate-sidebar.mjs --root .`
+- **VitePress**：在仓库根运行 `node <skill-dir>/scripts/regenerate-sidebar.mjs --root .`
+  若目标项目未使用该脚本（旧式手工配置），再按 `references/CONVENTIONS.md` §7.2 手工编辑 `.vitepress/config.mts`。
 
-若目标项目未使用该脚本（旧式手工配置），再按 `references/CONVENTIONS.md` §7.2 手工编辑 `.vitepress/config.mts`。
+- **Mintlify**：在仓库根运行 `node <skill-dir>/scripts/regenerate-navigation.mjs --root .`
+  若目标项目未使用该脚本，手工编辑 `codebase-wiki/docs.json` 的 `navigation.groups`。
+
+- **Starlight**：在仓库根运行 `node <skill-dir>/scripts/regenerate-starlight-sidebar.mjs --root .`
+  若目标项目未使用该脚本，手工编辑 `astro.config.mjs` 中 `starlight()` 的 `sidebar` 配置。
 
 ### 第 7 步：向用户确认
 
