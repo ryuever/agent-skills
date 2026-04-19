@@ -10,12 +10,14 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 | --- | --- |
 | [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site and regenerate sidebar/nav. |
 | [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
+| [curated-reads](./skills/curated-reads/SKILL.md) | Curate external tech articles (blogs, tweets, newsletters) with confidence scoring, explicit conflict handling, and volume-adaptive output; uses Starlight as doc engine. |
 
 ## Install (Cursor & others)
 
 ```bash
 npx skills add <your-github>/agent-skills --skill codebase-wiki -a cursor -y
 npx skills add <your-github>/agent-skills --skill project-wiki -a cursor -y
+npx skills add <your-github>/agent-skills --skill curated-reads -a cursor -y
 ```
 
 Local checkout while developing:
@@ -23,6 +25,7 @@ Local checkout while developing:
 ```bash
 npx skills add ./agent-skills --skill codebase-wiki -a cursor -y
 npx skills add ./agent-skills --skill project-wiki -a cursor -y
+npx skills add ./agent-skills --skill curated-reads -a cursor -y
 ```
 
 ## Bootstrap VitePress + `codebase-wiki/` in a target repo
@@ -95,11 +98,33 @@ node ./.cursor/skills/project-wiki/scripts/regenerate-sidebar.mjs --root .
 
 This updates **all** initialized engines' sidebars simultaneously (VitePress, Mintlify, Starlight).
 
+## Bootstrap `curated-reads/` in a target repo
+
+From the **target project root** (after the skill is installed):
+
+```bash
+node ./.cursor/skills/curated-reads/scripts/init-starlight.mjs --root . --title "Curated Reads"
+```
+
+Install dependencies and preview:
+
+```bash
+pnpm install
+pnpm run docs:reads:dev
+```
+
+After you add or rename Markdown files under `curated-reads/src/content/docs/`:
+
+```bash
+node ./.cursor/skills/curated-reads/scripts/regenerate-starlight-sidebar.mjs --root .
+```
+
 ## Update
 
 ```bash
 npx skills update codebase-wiki -y
 npx skills update project-wiki -y
+npx skills update curated-reads -y
 ```
 
 ## License
