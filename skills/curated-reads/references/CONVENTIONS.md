@@ -46,7 +46,7 @@
 ## 2. 文件命名
 
 - 使用 **`YYYYMMDD-`** 日期前缀 + **小写字母** + **连字符** 分隔：`20250419-claude-code-session-management.md`
-- 日期取文档首次创建日期（与 frontmatter `created` 字段一致）
+- 日期取**用户首次提交链接进行整理的日期**（即收录日期），而非原文发布日期；与 frontmatter `created` 字段一致
 - 名称应简洁且具有描述性，避免无意义缩写
 - 禁止使用大写字母、下划线、空格
 - 后缀统一为 `.md`
@@ -190,15 +190,11 @@ references:
 
 ### 3.2 标题
 
-使用一级标题，与 frontmatter 的 `title` 一致：
-
-```markdown
-# Claude Code 的 Session 管理与百万上下文窗口
-```
+**不要在正文中写 `# 标题`**。Starlight 会自动从 frontmatter 的 `title` 生成页面一级标题，正文中再写会导致标题重复显示。
 
 ### 3.3 概述
 
-紧接标题后提供 1-3 句话的概述，使用引用块：
+正文以引用块形式的概述开头（1-3 句话）：
 
 ```markdown
 > Anthropic 官方博客解读：如何通过 session 管理机制高效利用
@@ -344,7 +340,7 @@ references:
 
 ---
 
-## 8. 侧边栏与导航同步
+## 8. 侧边栏与首页索引同步
 
 当 `src/content/docs/` 下文档发生变化（新增、重命名、删除）时，在**目标仓库根目录**执行：
 
@@ -352,7 +348,12 @@ references:
 node <skill-dir>/scripts/regenerate-starlight-sidebar.mjs --root .
 ```
 
-该脚本会扫描所有分类目录下的 Markdown（读取 frontmatter 的 `id`、`title`、`category`），重写 `.starlight/sidebar.generated.mjs`。`astro.config.mjs` 从该文件导入 `starlightSidebar`。
+该脚本会扫描所有分类目录下的 Markdown（读取 frontmatter 的 `id`、`title`、`category`、`description`、`sources`），同时重写：
+
+1. `.starlight/sidebar.generated.mjs` — Starlight 侧边栏配置（`astro.config.mjs` 从该文件导入 `starlightSidebar`）
+2. `src/content/docs/index.mdx` — 首页文档索引表格（替换 `AUTO-INDEX-START` 与 `AUTO-INDEX-END` 注释标记之间的内容）
+
+> **注意**：`index.mdx` 中的文档索引表格由脚本自动生成，**请勿手动编辑**标记区域内的内容。手动编辑会在下次运行脚本时被覆盖。
 
 ---
 
