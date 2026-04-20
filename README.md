@@ -11,6 +11,7 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 | [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site and regenerate sidebar/nav. |
 | [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
 | [curated-reads](./skills/curated-reads/SKILL.md) | Curate external tech articles (blogs, tweets, newsletters) with confidence scoring, explicit conflict handling, and volume-adaptive output; uses Starlight as doc engine. |
+| [org-to-vitepress](./skills/org-to-vitepress/SKILL.md) | Batch-convert an Emacs Org-mode directory tree to Markdown via Pandoc and scaffold a VitePress site to serve it, with auto-generated multi-level sidebar from the folder structure. |
 
 ## Install (Cursor & others)
 
@@ -18,6 +19,7 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 npx skills add <your-github>/agent-skills --skill codebase-wiki -a cursor -y
 npx skills add <your-github>/agent-skills --skill project-wiki -a cursor -y
 npx skills add <your-github>/agent-skills --skill curated-reads -a cursor -y
+npx skills add <your-github>/agent-skills --skill org-to-vitepress -a cursor -y
 ```
 
 Local checkout while developing:
@@ -26,6 +28,7 @@ Local checkout while developing:
 npx skills add ./agent-skills --skill codebase-wiki -a cursor -y
 npx skills add ./agent-skills --skill project-wiki -a cursor -y
 npx skills add ./agent-skills --skill curated-reads -a cursor -y
+npx skills add ./agent-skills --skill org-to-vitepress -a cursor -y
 ```
 
 ## Bootstrap VitePress + `codebase-wiki/` in a target repo
@@ -119,12 +122,40 @@ After you add or rename Markdown files under `curated-reads/src/content/docs/`:
 node ./.cursor/skills/curated-reads/scripts/regenerate-starlight-sidebar.mjs --root .
 ```
 
+## Convert an Emacs Org-mode tree and serve with VitePress
+
+Prerequisite: install `pandoc` (`brew install pandoc` on macOS).
+
+From the **target project root** (after the skill is installed):
+
+```bash
+# 1) Convert .org → .md (mirrors directory structure, copies image/PDF assets)
+node ./.cursor/skills/org-to-vitepress/scripts/convert-org-to-md.mjs \
+    --source /absolute/path/to/org \
+    --dest ./org-wiki
+
+# 2) Scaffold VitePress (.vitepress/config.mts + INDEX.md + package.json scripts)
+node ./.cursor/skills/org-to-vitepress/scripts/init-vitepress.mjs \
+    --root . --title "Org Archive"
+
+# 3) Preview
+pnpm install
+pnpm run docs:org:dev      # http://localhost:5173/
+```
+
+Whenever you add or rename Markdown under `org-wiki/`:
+
+```bash
+node ./.cursor/skills/org-to-vitepress/scripts/regenerate-vitepress-sidebar.mjs --root .
+```
+
 ## Update
 
 ```bash
 npx skills update codebase-wiki -y
 npx skills update project-wiki -y
 npx skills update curated-reads -y
+npx skills update org-to-vitepress -y
 ```
 
 ## License

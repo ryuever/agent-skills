@@ -46,14 +46,25 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   │   └── regenerate-sidebar.mjs # Tri-engine sidebar sync
     │   └── assets/
     │
-    └── curated-reads/                 # External article curation (confidence + conflict)
+    ├── curated-reads/                 # External article curation (confidence + conflict)
+    │   ├── SKILL.md
+    │   ├── references/
+    │   │   └── CONVENTIONS.md
+    │   ├── scripts/
+    │   │   ├── init-starlight.mjs
+    │   │   └── regenerate-starlight-sidebar.mjs
+    │   └── assets/
+    │
+    └── org-to-vitepress/               # Emacs Org-mode tree → Markdown (via pandoc) → VitePress site
         ├── SKILL.md
         ├── references/
         │   └── CONVENTIONS.md
         ├── scripts/
-        │   ├── init-starlight.mjs
-        │   └── regenerate-starlight-sidebar.mjs
+        │   ├── convert-org-to-md.mjs       # Pandoc-driven batch converter + asset copy
+        │   ├── init-vitepress.mjs
+        │   └── regenerate-vitepress-sidebar.mjs
         └── assets/
+            └── vitepress/                   # config.mts / sidebar.generated.mts / INDEX.md templates
 ```
 
 ## Skills Summary
@@ -63,6 +74,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
 | **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap) | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight |
 | **project-wiki** | One-shot DeepWiki-style panorama: static analysis → hierarchical numbered docs | `1.x`–`6.x` (overview → operations) | VitePress, Mintlify, Starlight |
 | **curated-reads** | Curate external tech articles with confidence scoring & explicit conflict handling | `AI-xxx` `ENG-xxx` `FE-xxx` etc. | Starlight only |
+| **org-to-vitepress** | Batch-convert Emacs Org-mode tree to Markdown via Pandoc; auto-scaffold VitePress site with multi-level sidebar mirroring the source folders | none (directory-driven) | VitePress only |
 
 ## Key Conventions
 
