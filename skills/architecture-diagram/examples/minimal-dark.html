@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minimal Dark Architecture</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #0b1020; color: #dbeafe; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 14px; max-width: 1080px; margin: 0 auto; }
+      h1 { margin: 0 0 10px; font-size: 20px; }
+      p { margin: 0 0 14px; color: #9ca3af; font-size: 13px; }
+      svg { width: 100%; display: block; }
+      .n { fill: #0f172a; stroke-width: 1.4; rx: 8; }
+      .t { fill: #e5e7eb; font-size: 12px; text-anchor: middle; }
+      .s { fill: #9ca3af; font-size: 10px; text-anchor: middle; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Minimal Dark - SaaS Core</h1>
+      <p>Simple left-to-right chain, minimal labels.</p>
+      <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker>
+        </defs>
+        <line x1="190" y1="140" x2="360" y2="140" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+        <line x1="520" y1="140" x2="690" y2="140" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+        <rect class="n" x="50" y="100" width="140" height="80" stroke="#22d3ee"/><text class="t" x="120" y="132">Client</text><text class="s" x="120" y="150">Web/Mobile</text>
+        <rect class="n" x="360" y="100" width="160" height="80" stroke="#34d399"/><text class="t" x="440" y="132">API</text><text class="s" x="440" y="150">Node.js</text>
+        <rect class="n" x="690" y="100" width="160" height="80" stroke="#a78bfa"/><text class="t" x="770" y="132">PostgreSQL</text><text class="s" x="770" y="150">Primary DB</text>
+      </svg>
+    </div>
+  </body>
+</html>

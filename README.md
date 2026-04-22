@@ -12,6 +12,18 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 | [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
 | [curated-reads](./skills/curated-reads/SKILL.md) | Curate external tech articles (blogs, tweets, newsletters) with confidence scoring, explicit conflict handling, and volume-adaptive output; uses Starlight as doc engine. |
 | [org-to-vitepress](./skills/org-to-vitepress/SKILL.md) | Batch-convert an Emacs Org-mode directory tree to Markdown via Pandoc and scaffold a VitePress site to serve it, with auto-generated multi-level sidebar from the folder structure. |
+| [architecture-diagram](./skills/architecture-diagram/SKILL.md) | Generate architecture diagrams as standalone HTML + inline SVG from system descriptions; includes reusable template, conventions, init script, and multi-style examples (dark/light/blueprint/editorial). |
+
+## Skill Design Principles
+
+Recent optimization focuses on a lightweight "router-first" pattern inspired by strong editorial skills:
+
+- `SKILL.md` acts as the task router; deep details stay in `references/` and are loaded on demand.
+- Each skill now defines a **First-run Gate** to avoid silent heavy writes in uninitialized target repos.
+- Workflows prefer a **minimum viable path first** (generate one usable result, then enrich).
+- Navigation/scripts are treated as sync steps, not mandatory upfront reads.
+
+This keeps agent context smaller, reduces accidental over-generation, and improves first-use safety.
 
 ## Install (Cursor & others)
 
@@ -20,6 +32,7 @@ npx skills add <your-github>/agent-skills --skill codebase-wiki -a cursor -y
 npx skills add <your-github>/agent-skills --skill project-wiki -a cursor -y
 npx skills add <your-github>/agent-skills --skill curated-reads -a cursor -y
 npx skills add <your-github>/agent-skills --skill org-to-vitepress -a cursor -y
+npx skills add <your-github>/agent-skills --skill architecture-diagram -a cursor -y
 ```
 
 Local checkout while developing:
@@ -29,6 +42,7 @@ npx skills add ./agent-skills --skill codebase-wiki -a cursor -y
 npx skills add ./agent-skills --skill project-wiki -a cursor -y
 npx skills add ./agent-skills --skill curated-reads -a cursor -y
 npx skills add ./agent-skills --skill org-to-vitepress -a cursor -y
+npx skills add ./agent-skills --skill architecture-diagram -a cursor -y
 ```
 
 ## Bootstrap VitePress + `codebase-wiki/` in a target repo
@@ -57,6 +71,11 @@ After you add or rename Markdown files under `codebase-wiki/architecture|discuss
 ```bash
 node ./.cursor/skills/codebase-wiki/scripts/regenerate-sidebar.mjs --root .
 ```
+
+If `architecture-diagrams/` already exists, codebase-wiki init auto-creates bridge files:
+
+- `codebase-wiki/ARCHITECTURE-DIAGRAM-LINKS.md`
+- `architecture-diagrams/CODEBASE-WIKI-LINKS.md`
 
 ## Bootstrap `project-wiki/` in a target repo
 
@@ -149,6 +168,34 @@ Whenever you add or rename Markdown under `org-wiki/`:
 node ./.cursor/skills/org-to-vitepress/scripts/regenerate-vitepress-sidebar.mjs --root .
 ```
 
+## Bootstrap `architecture-diagrams/` in a target repo
+
+From the **target project root** (after the skill is installed):
+
+```bash
+node ./.cursor/skills/architecture-diagram/scripts/init-architecture-diagram.mjs --root .
+```
+
+This creates `architecture-diagrams/template.html` and `architecture-diagrams/CONVENTIONS.md`.
+
+Then create a diagram file from template:
+
+```bash
+cp ./architecture-diagrams/template.html ./architecture-diagrams/20260421-my-system-architecture.html
+```
+
+If compatible knowledge skills already exist (`codebase-wiki/`, `project-wiki/`, `curated-reads/`, `org-wiki/`), init auto-creates bridge files:
+
+- `<source-dir>/ARCHITECTURE-DIAGRAM-LINKS.md`
+- `architecture-diagrams/<SOURCE-NAME>-LINKS.md`
+
+Style references live in the skill package:
+
+- `./.cursor/skills/architecture-diagram/examples/minimal-dark.html`
+- `./.cursor/skills/architecture-diagram/examples/minimal-light.html`
+- `./.cursor/skills/architecture-diagram/examples/blueprint-grid.html`
+- `./.cursor/skills/architecture-diagram/examples/editorial-cards.html`
+
 ## Update
 
 ```bash
@@ -156,7 +203,19 @@ npx skills update codebase-wiki -y
 npx skills update project-wiki -y
 npx skills update curated-reads -y
 npx skills update org-to-vitepress -y
+npx skills update architecture-diagram -y
 ```
+
+## Cross-skill Linking with `architecture-diagram`
+
+When `architecture-diagrams/` exists, these init scripts now auto-detect and create bridge files:
+
+- `codebase-wiki` init → `codebase-wiki/ARCHITECTURE-DIAGRAM-LINKS.md` + `architecture-diagrams/CODEBASE-WIKI-LINKS.md`
+- `project-wiki` init → `project-wiki/ARCHITECTURE-DIAGRAM-LINKS.md` + `architecture-diagrams/PROJECT-WIKI-LINKS.md`
+- `curated-reads` init → `curated-reads/ARCHITECTURE-DIAGRAM-LINKS.md` + `architecture-diagrams/CURATED-READS-LINKS.md`
+- `org-to-vitepress` init → `<srcDir>/ARCHITECTURE-DIAGRAM-LINKS.md` + `architecture-diagrams/ORG-TO-VITEPRESS-LINKS.md`
+
+And when `architecture-diagram` is initialized, it auto-detects those source dirs and creates the same bridge files from its side.
 
 ## License
 

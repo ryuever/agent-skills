@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blueprint Grid Architecture</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #071427; color: #bfdbfe; font-family: "JetBrains Mono", ui-monospace, monospace; }
+      .wrap { max-width: 1120px; margin: 0 auto; border: 1px solid #1d4ed8; border-radius: 10px; padding: 14px; background: #0b1f3a; }
+      h1 { margin: 0 0 8px; font-size: 18px; letter-spacing: 0.3px; }
+      p { margin: 0 0 12px; color: #93c5fd; font-size: 12px; }
+      svg { width: 100%; display: block; }
+      .box { fill: rgba(15, 23, 42, 0.75); stroke: #60a5fa; stroke-width: 1.2; rx: 8; }
+      .txt { fill: #dbeafe; font-size: 11px; text-anchor: middle; }
+      .sub { fill: #93c5fd; font-size: 9px; text-anchor: middle; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Blueprint Grid - Cloud Platform</h1>
+      <p>Engineering-style grid, strong boundaries for infra docs.</p>
+      <svg viewBox="0 0 1080 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="g" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#1e3a8a" stroke-width="0.6"/></pattern>
+          <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#60a5fa"/></marker>
+        </defs>
+        <rect x="0" y="0" width="1080" height="420" fill="#071427"/>
+        <rect x="0" y="0" width="1080" height="420" fill="url(#g)"/>
+        <rect x="320" y="40" width="720" height="320" rx="10" fill="none" stroke="#f59e0b" stroke-dasharray="7,4"/>
+        <text x="340" y="62" fill="#fbbf24" font-size="11">VPC / Region</text>
+        <line x1="160" y1="130" x2="350" y2="130" stroke="#60a5fa" stroke-width="2" marker-end="url(#a)"/>
+        <line x1="510" y1="130" x2="690" y2="130" stroke="#60a5fa" stroke-width="2" marker-end="url(#a)"/>
+        <line x1="850" y1="170" x2="850" y2="255" stroke="#60a5fa" stroke-width="2" marker-end="url(#a)"/>
+        <rect class="box" x="40" y="90" width="120" height="80"/><text class="txt" x="100" y="120">Client</text><text class="sub" x="100" y="138">Browser</text>
+        <rect class="box" x="350" y="90" width="160" height="80"/><text class="txt" x="430" y="120">Ingress</text><text class="sub" x="430" y="138">ALB</text>
+        <rect class="box" x="690" y="90" width="160" height="80"/><text class="txt" x="770" y="120">Service</text><text class="sub" x="770" y="138">K8s Pod</text>
+        <rect class="box" x="770" y="255" width="160" height="80"/><text class="txt" x="850" y="286">Database</text><text class="sub" x="850" y="304">Aurora PG</text>
+      </svg>
+    </div>
+  </body>
+</html>

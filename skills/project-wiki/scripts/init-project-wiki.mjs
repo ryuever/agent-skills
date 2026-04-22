@@ -228,6 +228,12 @@ function main() {
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
   execFileSync(process.execPath, [regen, "--root", root], { stdio: "inherit" });
 
+  // Auto-link with architecture-diagrams/ when present
+  const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
+  if (fs.existsSync(linker)) {
+    execFileSync(process.execPath, [linker, "--root", root], { stdio: "inherit" });
+  }
+
   // Print next steps
   console.log("\n📋 Next steps:\n");
   if (stacks.has("vitepress")) {

@@ -28,6 +28,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   │   ├── init-vitepress.mjs
     │   │   ├── init-mintlify.mjs
     │   │   ├── init-starlight.mjs
+    │   │   ├── link-architecture-diagrams.mjs
     │   │   ├── regenerate-sidebar.mjs
     │   │   ├── regenerate-navigation.mjs
     │   │   └── regenerate-starlight-sidebar.mjs
@@ -43,6 +44,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   ├── scripts/
     │   │   ├── analyze-repo.mjs       # Deep repo analysis → .meta/*.json
     │   │   ├── init-project-wiki.mjs
+    │   │   ├── link-architecture-diagrams.mjs
     │   │   └── regenerate-sidebar.mjs # Tri-engine sidebar sync
     │   └── assets/
     │
@@ -52,29 +54,47 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   │   └── CONVENTIONS.md
     │   ├── scripts/
     │   │   ├── init-starlight.mjs
+    │   │   ├── link-architecture-diagrams.mjs
     │   │   └── regenerate-starlight-sidebar.mjs
     │   └── assets/
     │
-    └── org-to-vitepress/               # Emacs Org-mode tree → Markdown (via pandoc) → VitePress site
+    ├── org-to-vitepress/              # Emacs Org-mode tree → Markdown (via pandoc) → VitePress site
+    │   ├── SKILL.md
+    │   ├── references/
+    │   │   └── CONVENTIONS.md
+    │   ├── scripts/
+    │   │   ├── convert-org-to-md.mjs       # Pandoc-driven batch converter + asset copy
+    │   │   ├── init-vitepress.mjs
+    │   │   ├── link-architecture-diagrams.mjs
+    │   │   └── regenerate-vitepress-sidebar.mjs
+    │   └── assets/
+    │       └── vitepress/                   # config.mts / sidebar.generated.mts / INDEX.md templates
+    │
+    └── architecture-diagram/          # Standalone HTML + SVG architecture diagram generator
         ├── SKILL.md
         ├── references/
         │   └── CONVENTIONS.md
         ├── scripts/
-        │   ├── convert-org-to-md.mjs       # Pandoc-driven batch converter + asset copy
-        │   ├── init-vitepress.mjs
-        │   └── regenerate-vitepress-sidebar.mjs
-        └── assets/
-            └── vitepress/                   # config.mts / sidebar.generated.mts / INDEX.md templates
+        │   └── init-architecture-diagram.mjs
+        ├── assets/
+        │   └── template.html
+        └── examples/
+            ├── README.md
+            ├── minimal-dark.html
+            ├── minimal-light.html
+            ├── blueprint-grid.html
+            └── editorial-cards.html
 ```
 
 ## Skills Summary
 
 | Skill | Purpose | Numbering | Doc Engines |
 |-------|---------|-----------|-------------|
-| **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap) | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight |
+| **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap), with optional auto-link bridge to architecture-diagrams | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight |
 | **project-wiki** | One-shot DeepWiki-style panorama: static analysis → hierarchical numbered docs | `1.x`–`6.x` (overview → operations) | VitePress, Mintlify, Starlight |
 | **curated-reads** | Curate external tech articles with confidence scoring & explicit conflict handling | `AI-xxx` `ENG-xxx` `FE-xxx` etc. | Starlight only |
 | **org-to-vitepress** | Batch-convert Emacs Org-mode tree to Markdown via Pandoc; auto-scaffold VitePress site with multi-level sidebar mirroring the source folders | none (directory-driven) | VitePress only |
+| **architecture-diagram** | Generate standalone HTML + inline SVG architecture diagrams from natural language system descriptions, with multi-style examples | `YYYYMMDD-*.html` | Standalone HTML (no doc engine) |
 
 ## Key Conventions
 
@@ -117,6 +137,19 @@ Every skill **must** contain:
 4. Add doc-engine templates in `skills/<name>/assets/`
 5. Update `README.md` skills table
 
+### Architecture-Diagram Integration Gate (Mandatory)
+
+When adding a **new** skill to this repository, the agent must:
+
+1. Ask the user whether this new skill should integrate with `architecture-diagram`.
+2. Wait for explicit confirmation before implementing any bridge/link logic.
+3. If user confirms, add init-time auto-detection + bridge files:
+   - `<new-skill-output-dir>/ARCHITECTURE-DIAGRAM-LINKS.md`
+   - `architecture-diagrams/<NEW-SKILL-NAME>-LINKS.md`
+4. If user declines, keep skills independent and document the decision in PR/summary.
+
+Never assume integration by default for brand-new skills without user confirmation.
+
 ### Modifying an Existing Skill
 
 1. The `SKILL.md` is the single source of truth for agent behavior — changes here affect how all agents using this skill behave
@@ -155,4 +188,4 @@ npx skills update codebase-wiki -y
 - Do **not** add npm dependencies to scripts; use only Node.js built-ins
 - The `assets/` directories contain template files that use `INDEX.md` (uppercase) as the home page filename to avoid conflicts with default index behavior
 - When editing `SKILL.md` files, remember they serve dual purpose: human documentation AND agent instruction set
-- The three skills are independent and can be installed separately; they do not share code
+- The skills are independent and can be installed separately; they do not share code

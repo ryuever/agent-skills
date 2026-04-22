@@ -185,6 +185,12 @@ function main() {
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
   execFileSync(process.execPath, [regen, "--root", root], { stdio: "inherit" });
 
+  // 7. Auto-link with architecture-diagrams/ when present
+  const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
+  if (fs.existsSync(linker)) {
+    execFileSync(process.execPath, [linker, "--root", root], { stdio: "inherit" });
+  }
+
   console.log("\nNext steps:");
   console.log("  pnpm add -D vitepress   # or npm/yarn if not already installed");
   console.log("  pnpm run docs:wiki:dev");

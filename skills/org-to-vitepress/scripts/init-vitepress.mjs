@@ -175,6 +175,16 @@ function main() {
     });
   }
 
+  // 6. Auto-link with architecture-diagrams/ when present
+  const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
+  if (fs.existsSync(linker)) {
+    execFileSync(
+      process.execPath,
+      [linker, "--root", root, "--source-dir", srcDir],
+      { stdio: "inherit" },
+    );
+  }
+
   console.log("\nVitePress scaffold complete.");
   console.log("\nnext steps:");
   console.log("  pnpm install              # or npm install / yarn");

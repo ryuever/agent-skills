@@ -19,6 +19,29 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 - `assets/mintlify/` — Mintlify 项目骨架（`docs.json`、`INDEX.mdx` 等）
 - `assets/starlight/` — Starlight/Astro 项目骨架（`astro.config.mjs`、`src/content/docs/index.mdx` 等）
 
+## 加载策略（Progressive Disclosure）
+
+`SKILL.md` 只保留流程路由与决策规则，细节规范按需读取，避免一次性加载过多上下文：
+
+| 用户意图 | 必读内容 |
+| --- | --- |
+| 仅归档单篇文档 | `SKILL.md` + `references/CONVENTIONS.md` |
+| 需要维护双向引用 | 上述 + `CONVENTIONS` 中 references 关系表 |
+| 需要更新站点导航 | 上述 + 对应脚本注释（`scripts/regenerate-*.mjs`） |
+| 首次初始化站点 | 上述 + 对应引擎模板目录 `assets/<engine>/` |
+
+默认不要并行阅读全部 references，先完成最小闭环，再按任务升级读取深度。
+
+## 首次运行闸门（First-run Gate）
+
+当目标仓库第一次使用本 skill（不存在 `codebase-wiki/`）时，先暂停并给用户三选一：
+
+1. 立即初始化（推荐）：执行对应引擎 `init-*.mjs`
+2. 仅输出计划（不写文件）
+3. 继续写入默认目录（用户明确同意时）
+
+未得到用户明确选择前，不要隐式写入大量文档。
+
 ## 首次接入（人类或 Agent 执行）
 
 1. 用 [skills CLI](https://github.com/vercel-labs/skills) 安装本 skill（示例）：
@@ -167,3 +190,18 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 ### 第 7 步：向用户确认
 
 报告：文件路径、编号、分类、标题、本次 references 变更、侧栏是否已重新生成。
+
+## 与 architecture-diagram 自动联动
+
+初始化脚本会自动检测目标仓库是否存在 `architecture-diagrams/`：
+
+- 若存在：自动生成桥接文件
+  - `codebase-wiki/ARCHITECTURE-DIAGRAM-LINKS.md`
+  - `architecture-diagrams/CODEBASE-WIKI-LINKS.md`
+- 若不存在：跳过，不影响 wiki 正常使用
+
+手工补联动（可选）：
+
+```bash
+node <skill-dir>/scripts/link-architecture-diagrams.mjs --root .
+```

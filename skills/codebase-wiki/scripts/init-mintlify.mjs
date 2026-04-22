@@ -123,6 +123,14 @@ function main() {
     });
   }
 
+  // 6. Auto-link with architecture-diagrams/ when present
+  const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
+  if (fs.existsSync(linker)) {
+    execFileSync(process.execPath, [linker, "--root", root], {
+      stdio: "inherit",
+    });
+  }
+
   console.log("\nMintlify scaffold complete!");
   console.log("\nNext steps:");
   console.log("  npm i -g mint          # Install Mintlify CLI");

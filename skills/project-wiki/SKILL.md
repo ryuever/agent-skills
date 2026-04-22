@@ -17,6 +17,29 @@ description: "为仓库生成 DeepWiki 风格的项目全景文档：先运行 N
 
 灵感来源：[codewiki-generator](https://skills.sh/samzong/samzong/codewiki-generator)（分析脚本 + `doc_plan` + 证据链写作）与 [DeepWiki](https://deepwiki.com/)（自上而下全景阅读）。
 
+## 加载策略（Progressive Disclosure）
+
+先以最小上下文启动，再按任务读取扩展参考，减少无关 token 开销：
+
+| 任务阶段 | 必读内容 |
+| --- | --- |
+| 初始化与分析 | `SKILL.md` + `scripts/analyze-repo.mjs` 命令说明 |
+| 撰写页面 | 上述 + `references/doc-templates.md` |
+| 判断应写哪些页面 | 上述 + `references/structure-and-heuristics.md` |
+| 前端仓库深挖 | 上述 + `references/FRONTEND-FOCUS.md` |
+
+默认不要一次性加载全部 references；按照阶段逐步补充上下文。
+
+## 首次运行闸门（First-run Gate）
+
+若目标仓库不存在 `project-wiki/`，先向用户确认以下选项后再执行：
+
+1. 初始化并完整生成（运行 init + analyze + 写作）
+2. 只运行分析，先交付 `doc_plan`（不生成正文）
+3. 仅提供执行命令（不落盘）
+
+没有明确确认时，不直接开始大规模文档写入。
+
 ## 与 codebase-wiki 的分工
 
 | | codebase-wiki | project-wiki |
@@ -157,6 +180,21 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
   - Mintlify: `pnpm run docs:project-wiki:mintlify:dev`
   - Starlight: `pnpm run docs:project-wiki:starlight:dev`
 
+## 与 architecture-diagram 自动联动
+
+初始化脚本会自动检测目标仓库是否存在 `architecture-diagrams/`：
+
+- 若存在：自动生成桥接文件
+  - `project-wiki/ARCHITECTURE-DIAGRAM-LINKS.md`
+  - `architecture-diagrams/PROJECT-WIKI-LINKS.md`
+- 若不存在：跳过，不影响 project-wiki 正常使用
+
+手工补联动（可选）：
+
+```bash
+node <skill-dir>/scripts/link-architecture-diagrams.mjs --root .
+```
+
 ## 目录约定（`project-wiki/`）
 
 | 子目录 | 用途 | 编号前缀 |
@@ -189,6 +227,7 @@ node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 |------|------|
 | `scripts/analyze-repo.mjs` | 深度扫描仓库 → `.meta/*.json`（含 import 图谱、路由/状态检测） |
 | `scripts/init-project-wiki.mjs` | 目录骨架 + 三套引擎配置 + `package.json` 脚本（`--stack` 参数） |
+| `scripts/link-architecture-diagrams.mjs` | 检测并建立 `project-wiki` 与 `architecture-diagrams` 的桥接文件 |
 | `scripts/regenerate-sidebar.mjs` | 三套引擎侧栏更新（VitePress / Mintlify / Starlight，均支持编号层级） |
 | `references/doc-templates.md` | DeepWiki 风格页面模板 |
 | `references/structure-and-heuristics.md` | 页面集合与启发式规则 |

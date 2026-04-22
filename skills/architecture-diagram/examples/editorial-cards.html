@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editorial Cards Architecture</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #020617; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; }
+      .container { max-width: 1180px; margin: 0 auto; }
+      h1 { margin: 0 0 6px; font-size: 24px; }
+      .sub { margin: 0 0 14px; color: #94a3b8; font-size: 13px; }
+      .panel { background: rgba(15, 23, 42, 0.55); border: 1px solid #1e293b; border-radius: 14px; padding: 16px; }
+      svg { width: 100%; display: block; }
+      .cards { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .c { border: 1px solid #1e293b; background: rgba(15, 23, 42, 0.55); border-radius: 10px; padding: 10px; }
+      .c h3 { margin: 0 0 6px; font-size: 13px; }
+      .c p { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.45; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Editorial Cards - Platform Story</h1>
+      <p class="sub">Narrative style for architecture review notes.</p>
+      <div class="panel">
+        <svg viewBox="0 0 1040 380" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#64748b"/></marker></defs>
+          <line x1="180" y1="120" x2="340" y2="120" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+          <line x1="500" y1="120" x2="660" y2="120" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+          <line x1="740" y1="170" x2="740" y2="255" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+          <rect x="40" y="80" width="140" height="80" rx="10" fill="rgba(8,51,68,0.4)" stroke="#22d3ee"/><text x="110" y="112" fill="#e2e8f0" text-anchor="middle" font-size="12">Users</text><text x="110" y="130" fill="#94a3b8" text-anchor="middle" font-size="10">Web/App</text>
+          <rect x="340" y="80" width="160" height="80" rx="10" fill="rgba(6,78,59,0.4)" stroke="#34d399"/><text x="420" y="112" fill="#e2e8f0" text-anchor="middle" font-size="12">Edge/API</text><text x="420" y="130" fill="#94a3b8" text-anchor="middle" font-size="10">Auth + Routing</text>
+          <rect x="660" y="80" width="160" height="90" rx="10" fill="rgba(6,78,59,0.4)" stroke="#34d399"/><text x="740" y="112" fill="#e2e8f0" text-anchor="middle" font-size="12">Core Service</text><text x="740" y="130" fill="#94a3b8" text-anchor="middle" font-size="10">Business Logic</text>
+          <rect x="660" y="255" width="160" height="80" rx="10" fill="rgba(76,29,149,0.4)" stroke="#a78bfa"/><text x="740" y="287" fill="#e2e8f0" text-anchor="middle" font-size="12">Data Layer</text><text x="740" y="305" fill="#94a3b8" text-anchor="middle" font-size="10">DB + Cache</text>
+        </svg>
+      </div>
+      <div class="cards">
+        <div class="c"><h3>Intent</h3><p>Highlight one core request path and hide noisy internals.</p></div>
+        <div class="c"><h3>Boundaries</h3><p>Keep trust zones explicit: edge, service, and data tiers.</p></div>
+        <div class="c"><h3>Next Step</h3><p>Add async lane when introducing event-driven workflows.</p></div>
+      </div>
+    </div>
+  </body>
+</html>
