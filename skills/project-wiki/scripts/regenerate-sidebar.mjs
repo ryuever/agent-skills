@@ -22,6 +22,9 @@ const CATEGORIES = [
   { dir: "modules", group: "核心模块", prefix: "4" },
   { dir: "dataflow", group: "数据流", prefix: "5" },
   { dir: "operations", group: "工程运维", prefix: "6" },
+  { dir: "quality", group: "代码质量", prefix: "7" },
+  { dir: "api", group: "类型与 API", prefix: "8" },
+  { dir: "health", group: "项目健康", prefix: "9" },
 ];
 
 function parseArgs(argv) {

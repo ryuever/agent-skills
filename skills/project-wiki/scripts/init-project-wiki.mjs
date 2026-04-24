@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Scaffold project-wiki/ with VitePress configuration.
+ * Scaffold project-wiki/ with multi-engine doc configuration.
  *
  * Usage (from target repo root):
  *   node <path-to-this-skill>/scripts/init-project-wiki.mjs --root . --title "Project Wiki"
@@ -10,7 +10,8 @@
  *   --skill-dir <dir>  Path to the project-wiki skill folder (default: parent of scripts/)
  *   --title <string>   Wiki title (default: Project Wiki)
  *   --github <url>     Optional GitHub URL for VitePress social links
- *   --stack <list>     Comma-separated: vitepress (default), mintlify, starlight, or all
+ *   --stack <list>     Comma-separated: vitepress (default), mintlify, starlight, fumadocs, or all
+ *   --content-dir <dir> Fumadocs content mirror dir (default: content/docs/project-wiki)
  *   --force            Overwrite generated files if they already exist
  */
 
@@ -31,6 +32,7 @@ function parseArgs(argv) {
     github: "",
     color: "#0D9373",
     stack: "vitepress",
+    contentDir: path.join("content", "docs", WIKI_DIR),
     force: false,
   };
   for (let i = 2; i < argv.length; i++) {
@@ -41,6 +43,7 @@ function parseArgs(argv) {
     else if (a === "--github" && argv[i + 1]) out.github = argv[++i];
     else if (a === "--color" && argv[i + 1]) out.color = argv[++i];
     else if (a === "--stack" && argv[i + 1]) out.stack = argv[++i];
+    else if (a === "--content-dir" && argv[i + 1]) out.contentDir = argv[++i];
     else if (a === "--force") out.force = true;
   }
   return out;
@@ -48,9 +51,9 @@ function parseArgs(argv) {
 
 function stacksFromArg(stackArg) {
   const s = String(stackArg || "vitepress").trim().toLowerCase();
-  if (s === "all") return new Set(["vitepress", "mintlify", "starlight"]);
+  if (s === "all") return new Set(["vitepress", "mintlify", "starlight", "fumadocs"]);
   const parts = s.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
-  const allowed = new Set(["vitepress", "mintlify", "starlight"]);
+  const allowed = new Set(["vitepress", "mintlify", "starlight", "fumadocs"]);
   const picked = parts.filter((p) => allowed.has(p));
   return new Set(picked.length > 0 ? picked : ["vitepress"]);
 }
@@ -82,6 +85,17 @@ function copyDirWithReplacements(srcDir, destDir, replacements, force) {
       console.log(`  ✓ ${destPath}`);
     }
   }
+}
+
+function writeFileIfNeeded(target, content, force) {
+  if (fs.existsSync(target) && !force) {
+    console.log(`  Skip existing ${target}`);
+    return false;
+  }
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, content, "utf8");
+  console.log(`  ✓ ${target}`);
+  return true;
 }
 
 function mergePackageJson(root, stacks) {
@@ -131,6 +145,17 @@ function mergePackageJson(root, stacks) {
     }
   }
 
+  if (stacks.has("fumadocs")) {
+    if (!pkg.devDependencies["remark-mermaidjs"]) {
+      pkg.devDependencies["remark-mermaidjs"] = "^7.0.0";
+      changed = true;
+    }
+    if (!pkg.devDependencies.mermaid) {
+      pkg.devDependencies.mermaid = "^11.12.0";
+      changed = true;
+    }
+  }
+
   if (changed || !fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
     console.log(`  ✓ Updated ${pkgPath}`);
@@ -138,7 +163,7 @@ function mergePackageJson(root, stacks) {
 }
 
 function main() {
-  const { root, skillDir, title, github, color, stack, force } = parseArgs(process.argv);
+  const { root, skillDir, title, github, color, stack, contentDir, force } = parseArgs(process.argv);
   const stacks = stacksFromArg(stack);
 
   console.log(`\n🏗️  Initializing project-wiki in ${root}\n`);
@@ -147,6 +172,7 @@ function main() {
   const vpAssetsDir = path.join(skillDir, "assets", "vitepress");
   const mintAssetsDir = path.join(skillDir, "assets", "mintlify");
   const starAssetsDir = path.join(skillDir, "assets", "starlight");
+  const fumadocsMirrorDir = path.join(root, contentDir);
 
   if (!fs.existsSync(refs)) {
     console.error(`Missing ${refs}`);
@@ -225,18 +251,38 @@ function main() {
     }
   }
 
+  // Fumadocs (content mirror only; runtime config is project-specific)
+  if (stacks.has("fumadocs")) {
+    const subdirs = ["overview", "architecture", "concepts", "modules", "dataflow", "operations"];
+    for (const d of subdirs) {
+      const dir = path.join(fumadocsMirrorDir, d);
+      fs.mkdirSync(dir, { recursive: true });
+      const g = path.join(dir, ".gitkeep");
+      if (!fs.existsSync(g)) fs.writeFileSync(g, "", "utf8");
+    }
+    writeFileIfNeeded(
+      path.join(fumadocsMirrorDir, "README.md"),
+      `# ${title} (Fumadocs content mirror)
+
+This directory is prepared for Fumadocs content consumption.
+
+Recommended workflow:
+- Keep \`${WIKI_DIR}/\` as the canonical source
+- Sync docs into this mirror before publishing
+- Or point your Fumadocs loader/source directly to \`${WIKI_DIR}/\`
+
+If Mermaid diagrams are used, ensure your MDX pipeline enables \`remark-mermaidjs\`.
+`,
+      force,
+    );
+  }
+
   // Merge package.json
   mergePackageJson(root, stacks);
 
   // Run sidebar regeneration
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
   execFileSync(process.execPath, [regen, "--root", root], { stdio: "inherit" });
-
-  // Auto-link with architecture-diagrams/ when present
-  const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
-  if (fs.existsSync(linker)) {
-    execFileSync(process.execPath, [linker, "--root", root], { stdio: "inherit" });
-  }
 
   // Print next steps
   console.log("\n📋 Next steps:\n");
@@ -250,6 +296,10 @@ function main() {
   }
   if (stacks.has("starlight")) {
     console.log(`  cd ${WIKI_DIR}/starlight && pnpm install && pnpm dev`);
+  }
+  if (stacks.has("fumadocs")) {
+    console.log("  pnpm add -D remark-mermaidjs mermaid");
+    console.log(`  configure Fumadocs source to read "${contentDir}" (or "${WIKI_DIR}/")`);
   }
   console.log(`\n  # Run analysis:`);
   console.log(`  node <skill-dir>/scripts/analyze-repo.mjs --root . --out-dir ${WIKI_DIR}`);

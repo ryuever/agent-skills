@@ -92,7 +92,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
 | Skill | Purpose | Numbering | Doc Engines |
 |-------|---------|-----------|-------------|
 | **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap), with optional auto-link bridge to architecture-diagrams | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight, Fumadocs |
-| **project-wiki** | One-shot DeepWiki-style panorama: static analysis → hierarchical numbered docs | `1.x`–`6.x` (overview → operations) | VitePress, Mintlify, Starlight |
+| **project-wiki** | One-shot DeepWiki-style panorama: static analysis → hierarchical numbered docs | `1.x`–`6.x` (overview → operations) | VitePress, Mintlify, Starlight, Fumadocs |
 | **curated-reads** | Curate external tech articles with confidence scoring & explicit conflict handling | `AI-xxx` `ENG-xxx` `FE-xxx` etc. | Starlight only |
 | **org-to-vitepress** | Batch-convert Emacs Org-mode tree to Markdown via Pandoc; auto-scaffold VitePress site with multi-level sidebar mirroring the source folders | none (directory-driven) | VitePress only |
 | **architecture-diagram** | Generate standalone HTML + inline SVG architecture diagrams from natural language system descriptions, with multi-style examples | `YYYYMMDD-*.html` | Standalone HTML (no doc engine) |
@@ -114,6 +114,13 @@ Every skill **must** contain:
 - Scripts run with `node <script> --root <target-repo-root>` — they operate on the **target** project, not this repo
 - Common flags: `--root`, `--title`, `--force`, `--stack`, `--github`, `--skill-dir`
 - Scripts use only Node.js built-in modules (`fs`, `path`, `url`) — no npm dependencies
+
+### Mermaid Support Baseline (Static Site Generators)
+
+- For static site generators, Mermaid support is **enabled by default** in init flows
+- **VitePress**: include `vitepress-plugin-mermaid` and wire config through `withMermaid(defineConfig(...))`
+- **Fumadocs**: include `remark-mermaidjs` (and `mermaid` runtime) and provide clear MDX `remarkPlugins` enablement guidance
+- When adding or modifying SSG init scripts/templates, keep Mermaid-enabled defaults unless user explicitly requests otherwise
 
 ### Document Conventions
 

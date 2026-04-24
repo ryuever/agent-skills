@@ -82,6 +82,10 @@ function mergePackageJson(root) {
     pkg.devDependencies["remark-mermaidjs"] = "^7.0.0";
     changed = true;
   }
+  if (!pkg.devDependencies.mermaid) {
+    pkg.devDependencies.mermaid = "^11.12.0";
+    changed = true;
+  }
 
   if (changed) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
@@ -161,6 +165,9 @@ function main() {
   );
   console.log(
     '  Enable Mermaid in your Fumadocs MDX config: remarkPlugins: [remarkMermaid]',
+  );
+  console.log(
+    "  Ensure `mermaid` runtime package is installed for Mermaid rendering",
   );
   console.log(
     "  Update your project navigation (meta.json or source/layout config) after adding docs",

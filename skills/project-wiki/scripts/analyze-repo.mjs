@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync as _execSync } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -410,6 +411,714 @@ function detectComponents(rootDir, sourceFiles) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Code Complexity Analysis                                          */
+/* ------------------------------------------------------------------ */
+
+function analyzeCodeComplexity(sourceFiles, maxFiles = 300) {
+  const results = {
+    fileMetrics: [],       // Per-file complexity data
+    hotspots: [],          // Files with highest complexity
+    functionLengths: [],   // Longest functions
+    deepNesting: [],       // Files with deep nesting
+    summary: { avgLinesPerFile: 0, avgFunctionsPerFile: 0, maxNestingDepth: 0 },
+  };
+
+  const sampled = sourceFiles.slice(0, maxFiles);
+  let totalLines = 0;
+  let totalFunctions = 0;
+
+  for (const f of sampled) {
+    let content;
+    try { content = fs.readFileSync(f.full, "utf8"); } catch { continue; }
+    const lines = content.split("\n");
+    const lineCount = lines.length;
+    totalLines += lineCount;
+
+    // Count functions/methods
+    const funcMatches = content.match(
+      /(?:function\s+\w+|(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\(|(?:async\s+)?(?:\w+)\s*\([^)]*\)\s*\{|=>\s*\{)/g
+    );
+    const funcCount = funcMatches ? funcMatches.length : 0;
+    totalFunctions += funcCount;
+
+    // Measure nesting depth (count max nested braces)
+    let maxDepth = 0;
+    let currentDepth = 0;
+    for (const ch of content) {
+      if (ch === "{") { currentDepth++; if (currentDepth > maxDepth) maxDepth = currentDepth; }
+      else if (ch === "}") currentDepth--;
+    }
+
+    // Extract function lengths (approximate: find function boundaries)
+    const funcLengths = [];
+    const funcRegex = /(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(|(\w+)\s*\([^)]*\)\s*\{)/g;
+    let fm;
+    while ((fm = funcRegex.exec(content)) !== null) {
+      const name = fm[1] || fm[2] || fm[3];
+      const startLine = content.slice(0, fm.index).split("\n").length;
+      // Find matching closing brace (approximate)
+      let depth = 0;
+      let endIdx = fm.index;
+      let foundOpen = false;
+      for (let i = fm.index; i < content.length && i < fm.index + 5000; i++) {
+        if (content[i] === "{") { depth++; foundOpen = true; }
+        else if (content[i] === "}") { depth--; if (foundOpen && depth === 0) { endIdx = i; break; } }
+      }
+      const bodyLength = content.slice(fm.index, endIdx).split("\n").length;
+      if (bodyLength > 20) {
+        funcLengths.push({ name, file: f.rel, startLine, lines: bodyLength });
+      }
+    }
+    results.functionLengths.push(...funcLengths);
+
+    results.fileMetrics.push({
+      file: f.rel,
+      lines: lineCount,
+      functions: funcCount,
+      maxNesting: maxDepth,
+      complexity: funcCount * 2 + Math.max(0, maxDepth - 3) * 3 + Math.max(0, lineCount - 300),
+    });
+
+    if (maxDepth > 6) {
+      results.deepNesting.push({ file: f.rel, depth: maxDepth });
+    }
+  }
+
+  // Sort and slice
+  results.fileMetrics.sort((a, b) => b.complexity - a.complexity);
+  results.hotspots = results.fileMetrics.slice(0, 20).map((m) => ({
+    file: m.file, lines: m.lines, functions: m.functions,
+    maxNesting: m.maxNesting, complexity: m.complexity,
+  }));
+  results.functionLengths.sort((a, b) => b.lines - a.lines);
+  results.functionLengths = results.functionLengths.slice(0, 30);
+  results.deepNesting.sort((a, b) => b.depth - a.depth);
+  results.deepNesting = results.deepNesting.slice(0, 15);
+
+  results.summary = {
+    totalFilesAnalyzed: sampled.length,
+    avgLinesPerFile: sampled.length ? Math.round(totalLines / sampled.length) : 0,
+    avgFunctionsPerFile: sampled.length ? Math.round(totalFunctions / sampled.length) : 0,
+    maxNestingDepth: results.deepNesting.length ? results.deepNesting[0].depth : 0,
+    filesOver300Lines: results.fileMetrics.filter((m) => m.lines > 300).length,
+    filesOver500Lines: results.fileMetrics.filter((m) => m.lines > 500).length,
+    functionsOver50Lines: results.functionLengths.filter((f) => f.lines > 50).length,
+  };
+
+  return results;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Type System Analysis (TypeScript)                                 */
+/* ------------------------------------------------------------------ */
+
+function analyzeTypeSystem(rootDir, sourceFiles) {
+  const types = {
+    coreInterfaces: [],   // Important interfaces/types
+    typeFiles: [],         // Dedicated type definition files
+    enumDefinitions: [],   // Enums
+    genericPatterns: [],   // Generic type usage
+    summary: { hasTypeScript: false, typeFileCount: 0, interfaceCount: 0, typeAliasCount: 0, enumCount: 0 },
+  };
+
+  const tsFiles = sourceFiles.filter((f) => /\.[cm]?tsx?$/.test(f.ext));
+  if (tsFiles.length === 0) return types;
+  types.summary.hasTypeScript = true;
+
+  // Check tsconfig
+  const tsconfigPath = path.join(rootDir, "tsconfig.json");
+  const tsconfig = readJsonSafe(tsconfigPath);
+  if (tsconfig) {
+    types.tsconfigStrict = tsconfig.compilerOptions?.strict ?? false;
+    types.tsconfigTarget = tsconfig.compilerOptions?.target ?? "unknown";
+  }
+
+  // Find dedicated type files
+  const typeFilePatterns = [/types?\.[td]\.ts$/, /\.d\.ts$/, /types\//, /interfaces?\//,
+    /models?\.ts$/, /schema\.ts$/, /contracts?\//];
+  for (const f of tsFiles) {
+    if (typeFilePatterns.some((p) => p.test(f.rel))) {
+      types.typeFiles.push(f.rel);
+    }
+  }
+  types.typeFiles = types.typeFiles.slice(0, 30);
+  types.summary.typeFileCount = types.typeFiles.length;
+
+  // Extract interfaces, type aliases, and enums from top type files
+  const scanFiles = types.typeFiles.length > 0
+    ? tsFiles.filter((f) => types.typeFiles.includes(f.rel) || /types?|model|schema|interface/i.test(f.rel))
+    : tsFiles.filter((f) => /types?|model|schema|interface/i.test(f.rel));
+
+  for (const f of scanFiles.slice(0, 50)) {
+    let content;
+    try { content = fs.readFileSync(f.full, "utf8"); } catch { continue; }
+
+    // Extract exported interfaces
+    const ifaceRegex = /export\s+(?:default\s+)?interface\s+(\w+)(?:\s+extends\s+([\w,\s<>]+))?\s*\{/g;
+    let m;
+    while ((m = ifaceRegex.exec(content)) !== null) {
+      const startLine = content.slice(0, m.index).split("\n").length;
+      // Count properties (approximate)
+      let depth = 0;
+      let endIdx = m.index;
+      for (let i = m.index; i < content.length && i < m.index + 5000; i++) {
+        if (content[i] === "{") depth++;
+        else if (content[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+      }
+      const body = content.slice(m.index, endIdx);
+      const propCount = (body.match(/^\s+\w+[\?:].*$/gm) || []).length;
+      types.coreInterfaces.push({
+        name: m[1], kind: "interface", file: f.rel, line: startLine,
+        extends: m[2]?.trim() || null, properties: propCount,
+      });
+      types.summary.interfaceCount++;
+    }
+
+    // Extract exported type aliases
+    const typeRegex = /export\s+type\s+(\w+)(?:<[^>]+>)?\s*=/g;
+    while ((m = typeRegex.exec(content)) !== null) {
+      const startLine = content.slice(0, m.index).split("\n").length;
+      types.coreInterfaces.push({
+        name: m[1], kind: "type", file: f.rel, line: startLine,
+        extends: null, properties: 0,
+      });
+      types.summary.typeAliasCount++;
+    }
+
+    // Extract enums
+    const enumRegex = /export\s+(?:const\s+)?enum\s+(\w+)\s*\{/g;
+    while ((m = enumRegex.exec(content)) !== null) {
+      const startLine = content.slice(0, m.index).split("\n").length;
+      types.enumDefinitions.push({ name: m[1], file: f.rel, line: startLine });
+      types.summary.enumCount++;
+    }
+  }
+
+  types.coreInterfaces.sort((a, b) => b.properties - a.properties);
+  types.coreInterfaces = types.coreInterfaces.slice(0, 40);
+  types.enumDefinitions = types.enumDefinitions.slice(0, 20);
+
+  return types;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Architecture Violation Detection                                  */
+/* ------------------------------------------------------------------ */
+
+function detectArchitectureViolations(rootDir, sourceFiles, importGraph) {
+  const violations = {
+    circularDeps: [],      // Circular import chains
+    layerViolations: [],   // Cross-layer dependency violations
+    godFiles: [],          // Files with too many responsibilities
+    orphanFiles: [],       // Files not imported by anyone
+    summary: { circularCount: 0, layerViolationCount: 0, godFileCount: 0, orphanCount: 0 },
+  };
+
+  // 1. Detect circular dependencies
+  const graph = {}; // adjacency list
+  for (const f of sourceFiles) {
+    const rawImports = extractImports(f.full);
+    const localDeps = [];
+    for (const spec of rawImports) {
+      if (spec.startsWith(".")) {
+        const dir = path.dirname(f.rel);
+        let target = path.posix.join(dir, spec);
+        const candidates = [target, target + ".ts", target + ".tsx", target + ".js",
+          target + ".jsx", target + "/index.ts", target + "/index.tsx", target + "/index.js"];
+        const found = candidates.find((c) => sourceFiles.some((sf) => sf.rel === c));
+        if (found) localDeps.push(found);
+      }
+    }
+    graph[f.rel] = localDeps;
+  }
+
+  // Find cycles using DFS (limit to prevent excessive computation)
+  const visited = new Set();
+  const inStack = new Set();
+  const cycles = [];
+  let cycleSearchCount = 0;
+
+  function dfs(node, pathArr) {
+    if (cycleSearchCount++ > 20000) return;
+    if (inStack.has(node)) {
+      const cycleStart = pathArr.indexOf(node);
+      if (cycleStart !== -1) {
+        const cycle = pathArr.slice(cycleStart).concat(node);
+        if (cycle.length <= 8) cycles.push(cycle);
+      }
+      return;
+    }
+    if (visited.has(node)) return;
+    visited.add(node);
+    inStack.add(node);
+    for (const dep of (graph[node] || [])) {
+      dfs(dep, [...pathArr, node]);
+    }
+    inStack.delete(node);
+  }
+
+  for (const node of Object.keys(graph)) {
+    if (cycleSearchCount > 20000) break;
+    if (!visited.has(node)) dfs(node, []);
+  }
+
+  // Deduplicate cycles
+  const cycleSet = new Set();
+  for (const c of cycles) {
+    const normalized = [...c].sort().join(" -> ");
+    if (!cycleSet.has(normalized)) {
+      cycleSet.add(normalized);
+      violations.circularDeps.push({ chain: c, length: c.length - 1 });
+    }
+  }
+  violations.circularDeps = violations.circularDeps.slice(0, 20);
+  violations.summary.circularCount = violations.circularDeps.length;
+
+  // 2. Detect layer violations (common patterns)
+  const LAYER_ORDER = [
+    { pattern: /^src\/(pages?|views?|routes?)\//i, layer: "page", rank: 1 },
+    { pattern: /^src\/components?\//i, layer: "component", rank: 2 },
+    { pattern: /^src\/(hooks?|composables?)\//i, layer: "hook", rank: 3 },
+    { pattern: /^src\/(store|state|context)\//i, layer: "state", rank: 4 },
+    { pattern: /^src\/(services?|api)\//i, layer: "service", rank: 5 },
+    { pattern: /^src\/(utils?|helpers?|lib)\//i, layer: "utility", rank: 6 },
+    { pattern: /^src\/(types?|models?|interfaces?)\//i, layer: "type", rank: 7 },
+  ];
+
+  function getLayer(filePath) {
+    for (const l of LAYER_ORDER) {
+      if (l.pattern.test(filePath)) return l;
+    }
+    return null;
+  }
+
+  for (const [file, deps] of Object.entries(graph)) {
+    const fromLayer = getLayer(file);
+    if (!fromLayer) continue;
+    for (const dep of deps) {
+      const toLayer = getLayer(dep);
+      if (!toLayer) continue;
+      // Lower rank (infra) should not import higher rank (UI)
+      if (fromLayer.rank > toLayer.rank && fromLayer.layer !== "type") {
+        violations.layerViolations.push({
+          from: file, fromLayer: fromLayer.layer,
+          to: dep, toLayer: toLayer.layer,
+          message: `${fromLayer.layer} (rank ${fromLayer.rank}) imports ${toLayer.layer} (rank ${toLayer.rank})`,
+        });
+      }
+    }
+  }
+  violations.layerViolations = violations.layerViolations.slice(0, 30);
+  violations.summary.layerViolationCount = violations.layerViolations.length;
+
+  // 3. Detect god files (too many imports + too many importers)
+  for (const [file, deps] of Object.entries(graph)) {
+    const importedBy = Object.entries(graph).filter(([, d]) => d.includes(file)).length;
+    if (deps.length > 15 || importedBy > 20) {
+      violations.godFiles.push({
+        file, imports: deps.length, importedBy,
+        score: deps.length + importedBy,
+      });
+    }
+  }
+  violations.godFiles.sort((a, b) => b.score - a.score);
+  violations.godFiles = violations.godFiles.slice(0, 15);
+  violations.summary.godFileCount = violations.godFiles.length;
+
+  // 4. Detect orphan files (no imports, not imported by anyone, not entry/config)
+  const allImported = new Set(Object.values(graph).flat());
+  for (const f of sourceFiles) {
+    if (!allImported.has(f.rel) && (graph[f.rel] || []).length === 0) {
+      if (!/index\.|main\.|app\.|config|test|spec|\.d\.ts/i.test(f.rel)) {
+        violations.orphanFiles.push(f.rel);
+      }
+    }
+  }
+  violations.orphanFiles = violations.orphanFiles.slice(0, 30);
+  violations.summary.orphanCount = violations.orphanFiles.length;
+
+  return violations;
+}
+
+/* ------------------------------------------------------------------ */
+/*  API Surface Analysis                                              */
+/* ------------------------------------------------------------------ */
+
+function analyzeAPISurface(sourceFiles) {
+  const api = {
+    exportedFunctions: [],
+    exportedClasses: [],
+    exportedHooks: [],
+    exportedComponents: [],
+    barrelFiles: [],      // index.ts re-exports
+    summary: { totalExports: 0, hookCount: 0, componentCount: 0, classCount: 0, functionCount: 0 },
+  };
+
+  for (const f of sourceFiles.slice(0, 500)) {
+    let content;
+    try { content = fs.readFileSync(f.full, "utf8"); } catch { continue; }
+
+    // Exported functions
+    const funcRegex = /export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)/g;
+    let m;
+    while ((m = funcRegex.exec(content)) !== null) {
+      const name = m[1];
+      const line = content.slice(0, m.index).split("\n").length;
+      if (/^use[A-Z]/.test(name)) {
+        api.exportedHooks.push({ name, file: f.rel, line });
+        api.summary.hookCount++;
+      } else {
+        api.exportedFunctions.push({ name, file: f.rel, line });
+        api.summary.functionCount++;
+      }
+      api.summary.totalExports++;
+    }
+
+    // Exported const functions (arrow)
+    const arrowRegex = /export\s+(?:default\s+)?(?:const|let)\s+(\w+)\s*(?::\s*[\w<>\[\]|&\s]+)?\s*=\s*(?:async\s*)?\(/g;
+    while ((m = arrowRegex.exec(content)) !== null) {
+      const name = m[1];
+      const line = content.slice(0, m.index).split("\n").length;
+      if (/^use[A-Z]/.test(name)) {
+        api.exportedHooks.push({ name, file: f.rel, line });
+        api.summary.hookCount++;
+      } else if (/^[A-Z]/.test(name) && /return\s*\(?\s*<|React\.createElement/.test(content.slice(m.index, m.index + 2000))) {
+        api.exportedComponents.push({ name, file: f.rel, line });
+        api.summary.componentCount++;
+      } else {
+        api.exportedFunctions.push({ name, file: f.rel, line });
+        api.summary.functionCount++;
+      }
+      api.summary.totalExports++;
+    }
+
+    // Exported classes
+    const classRegex = /export\s+(?:default\s+)?(?:abstract\s+)?class\s+(\w+)/g;
+    while ((m = classRegex.exec(content)) !== null) {
+      const line = content.slice(0, m.index).split("\n").length;
+      api.exportedClasses.push({ name: m[1], file: f.rel, line });
+      api.summary.classCount++;
+      api.summary.totalExports++;
+    }
+
+    // Barrel files (index.ts with mostly re-exports)
+    if (/index\.[tj]sx?$/.test(f.rel)) {
+      const reExports = (content.match(/export\s+\{[^}]*\}\s+from/g) || []).length
+        + (content.match(/export\s+\*\s+from/g) || []).length;
+      if (reExports >= 3) {
+        api.barrelFiles.push({ file: f.rel, reExportCount: reExports });
+      }
+    }
+  }
+
+  api.exportedFunctions = api.exportedFunctions.slice(0, 40);
+  api.exportedClasses = api.exportedClasses.slice(0, 20);
+  api.exportedHooks = api.exportedHooks.slice(0, 30);
+  api.exportedComponents = api.exportedComponents.slice(0, 30);
+  api.barrelFiles = api.barrelFiles.slice(0, 15);
+
+  return api;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Dependency Health Analysis                                        */
+/* ------------------------------------------------------------------ */
+
+function analyzeDependencyHealth(rootDir) {
+  const health = {
+    directDeps: [],
+    devDeps: [],
+    peerDeps: [],
+    duplicateRisk: [],    // Deps that may cause version conflicts
+    heavyDeps: [],        // Notoriously large deps
+    summary: { directCount: 0, devCount: 0, peerCount: 0, totalCount: 0 },
+  };
+
+  const pkgPath = path.join(rootDir, "package.json");
+  const pkg = readJsonSafe(pkgPath);
+  if (!pkg) return health;
+
+  const HEAVY_DEPS = new Set([
+    "moment", "lodash", "jquery", "rxjs", "core-js", "polished",
+    "@angular/core", "firebase", "aws-sdk", "@aws-sdk",
+  ]);
+
+  const processDeps = (deps, category) => {
+    if (!deps) return [];
+    const result = [];
+    for (const [name, version] of Object.entries(deps)) {
+      const entry = {
+        name, version,
+        isWildcard: version === "*" || version === "latest",
+        isPinned: /^\d/.test(version),
+        isRange: /^[~^]/.test(version),
+      };
+      result.push(entry);
+      if (HEAVY_DEPS.has(name)) {
+        health.heavyDeps.push({ name, version, reason: "Known large dependency" });
+      }
+    }
+    return result;
+  };
+
+  health.directDeps = processDeps(pkg.dependencies, "direct");
+  health.devDeps = processDeps(pkg.devDependencies, "dev");
+  health.peerDeps = processDeps(pkg.peerDependencies, "peer");
+  health.summary.directCount = health.directDeps.length;
+  health.summary.devCount = health.devDeps.length;
+  health.summary.peerCount = health.peerDeps.length;
+  health.summary.totalCount = health.summary.directCount + health.summary.devCount + health.summary.peerCount;
+
+  // Check for potential duplicates across dep types
+  const allNames = new Map();
+  for (const d of [...health.directDeps, ...health.devDeps, ...health.peerDeps]) {
+    if (allNames.has(d.name)) {
+      const existing = allNames.get(d.name);
+      if (existing.version !== d.version) {
+        health.duplicateRisk.push({ name: d.name, versions: [existing.version, d.version] });
+      }
+    }
+    allNames.set(d.name, d);
+  }
+
+  // Check lock file existence
+  health.lockFile =
+    exists(path.join(rootDir, "pnpm-lock.yaml")) ? "pnpm-lock.yaml" :
+    exists(path.join(rootDir, "yarn.lock")) ? "yarn.lock" :
+    exists(path.join(rootDir, "package-lock.json")) ? "package-lock.json" :
+    exists(path.join(rootDir, "bun.lockb")) ? "bun.lockb" : null;
+
+  return health;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Test Coverage Analysis                                            */
+/* ------------------------------------------------------------------ */
+
+function analyzeTestCoverage(rootDir, allFiles, sourceFiles) {
+  const coverage = {
+    testFiles: [],
+    testFrameworks: [],
+    sourceToTestMap: [],  // Source files paired with their tests
+    untestedSources: [],  // Source files without corresponding tests
+    testDirStructure: [], // Test directory organization
+    summary: {
+      testFileCount: 0, sourceFileCount: 0, coverageRatio: 0,
+      hasTestConfig: false, hasE2E: false,
+    },
+  };
+
+  const testFiles = allFiles.filter((f) => TEST_PATTERNS.some((p) => p.test(f.rel)));
+  const nonTestSourceFiles = sourceFiles.filter((f) => !TEST_PATTERNS.some((p) => p.test(f.rel)));
+
+  coverage.testFiles = testFiles.map((f) => f.rel).slice(0, 50);
+  coverage.summary.testFileCount = testFiles.length;
+  coverage.summary.sourceFileCount = nonTestSourceFiles.length;
+  coverage.summary.coverageRatio = nonTestSourceFiles.length
+    ? Math.round((testFiles.length / nonTestSourceFiles.length) * 100) / 100
+    : 0;
+
+  // Detect test frameworks
+  const testConfigs = [
+    { file: "vitest.config.ts", framework: "Vitest" },
+    { file: "vitest.config.mts", framework: "Vitest" },
+    { file: "jest.config.js", framework: "Jest" },
+    { file: "jest.config.ts", framework: "Jest" },
+    { file: "jest.config.cjs", framework: "Jest" },
+    { file: "playwright.config.ts", framework: "Playwright (E2E)" },
+    { file: "cypress.config.ts", framework: "Cypress (E2E)" },
+    { file: "cypress.config.js", framework: "Cypress (E2E)" },
+  ];
+  for (const tc of testConfigs) {
+    if (exists(path.join(rootDir, tc.file))) {
+      coverage.testFrameworks.push(tc.framework);
+      coverage.summary.hasTestConfig = true;
+      if (/E2E/.test(tc.framework)) coverage.summary.hasE2E = true;
+    }
+  }
+
+  // Map source files to test files
+  const testBasenames = new Map();
+  for (const t of testFiles) {
+    const base = path.basename(t.rel)
+      .replace(/\.(test|spec)\.[tj]sx?$/, "")
+      .replace(/\.(test|spec)$/, "");
+    testBasenames.set(base, t.rel);
+  }
+
+  const testedSources = new Set();
+  for (const sf of nonTestSourceFiles) {
+    const base = path.basename(sf.rel).replace(/\.[tj]sx?$/, "");
+    if (testBasenames.has(base)) {
+      coverage.sourceToTestMap.push({
+        source: sf.rel,
+        test: testBasenames.get(base),
+      });
+      testedSources.add(sf.rel);
+    }
+  }
+  coverage.sourceToTestMap = coverage.sourceToTestMap.slice(0, 40);
+
+  // Find untested important sources (exclude type files, index files, etc.)
+  for (const sf of nonTestSourceFiles) {
+    if (!testedSources.has(sf.rel) && !/index\.[tj]s|\.d\.ts|types?\.|constants?\.|config/i.test(sf.rel)) {
+      coverage.untestedSources.push(sf.rel);
+    }
+  }
+  coverage.untestedSources = coverage.untestedSources.slice(0, 40);
+
+  // Test directory structure
+  const testDirs = new Set();
+  for (const t of testFiles) {
+    const dir = path.dirname(t.rel);
+    testDirs.add(dir);
+  }
+  coverage.testDirStructure = [...testDirs].sort().slice(0, 20);
+
+  return coverage;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Git Activity Analysis                                             */
+/* ------------------------------------------------------------------ */
+
+function analyzeGitActivity(rootDir) {
+  const git = {
+    hotFiles: [],         // Most frequently changed files
+    recentChanges: [],    // Recently modified files
+    contributors: [],     // Top contributors
+    commitFrequency: {},  // Commits per month
+    summary: { totalCommits: 0, contributorCount: 0, lastCommitDate: null, repoAge: null },
+  };
+
+  // Use imported execSync
+  const execSync = _execSync;
+
+  const gitExec = (cmd) => {
+    try {
+      return execSync(cmd, { cwd: rootDir, encoding: "utf8", timeout: 15000, stdio: ["pipe", "pipe", "pipe"] }).trim();
+    } catch { return ""; }
+  };
+
+  // Check if git repo
+  const isGit = gitExec("git rev-parse --is-inside-work-tree");
+  if (isGit !== "true") return git;
+
+  // Hot files (most commits)
+  const hotRaw = gitExec("git log --format=format: --name-only --diff-filter=ACRM -n 500 | sort | uniq -c | sort -rn | head -30");
+  if (hotRaw) {
+    for (const line of hotRaw.split("\n")) {
+      const m = line.trim().match(/^(\d+)\s+(.+)$/);
+      if (m) git.hotFiles.push({ file: m[2], changeCount: parseInt(m[1]) });
+    }
+  }
+
+  // Recent changes (last 20)
+  const recentRaw = gitExec("git log --format='%H|%an|%ae|%aI|%s' -n 20");
+  if (recentRaw) {
+    for (const line of recentRaw.split("\n")) {
+      const parts = line.split("|");
+      if (parts.length >= 5) {
+        git.recentChanges.push({
+          hash: parts[0].slice(0, 8), author: parts[1],
+          email: parts[2], date: parts[3], message: parts.slice(4).join("|"),
+        });
+      }
+    }
+  }
+
+  // Contributors
+  const contribRaw = gitExec("git shortlog -sn --no-merges -n 20");
+  if (contribRaw) {
+    for (const line of contribRaw.split("\n")) {
+      const m = line.trim().match(/^(\d+)\s+(.+)$/);
+      if (m) git.contributors.push({ name: m[2].trim(), commits: parseInt(m[1]) });
+    }
+  }
+
+  // Commit frequency (last 12 months)
+  const freqRaw = gitExec("git log --format='%aI' --since='12 months ago' | cut -c1-7 | sort | uniq -c");
+  if (freqRaw) {
+    for (const line of freqRaw.split("\n")) {
+      const m = line.trim().match(/^(\d+)\s+(.+)$/);
+      if (m) git.commitFrequency[m[2]] = parseInt(m[1]);
+    }
+  }
+
+  // Summary
+  git.summary.totalCommits = git.contributors.reduce((sum, c) => sum + c.commits, 0);
+  git.summary.contributorCount = git.contributors.length;
+  git.summary.lastCommitDate = git.recentChanges[0]?.date || null;
+
+  const firstCommitDate = gitExec("git log --reverse --format='%aI' | head -1");
+  if (firstCommitDate) {
+    const ageMs = Date.now() - new Date(firstCommitDate).getTime();
+    git.summary.repoAge = `${Math.round(ageMs / (1000 * 60 * 60 * 24))} days`;
+  }
+
+  return git;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Execution Flow Analysis (GitNexus integration)                    */
+/* ------------------------------------------------------------------ */
+
+function analyzeExecutionFlows(rootDir) {
+  const flows = {
+    detected: false,
+    processes: [],
+    keyFlows: [],
+    summary: { processCount: 0, flowCount: 0 },
+  };
+
+  // Try to read GitNexus data if available
+  const nexusDir = path.join(rootDir, ".gitnexus");
+  if (!exists(nexusDir)) return flows;
+
+  const metaPath = path.join(nexusDir, "meta.json");
+  const meta = readJsonSafe(metaPath);
+  if (!meta) return flows;
+
+  flows.detected = true;
+  flows.summary.processCount = meta.stats?.processes || 0;
+  flows.summary.flowCount = meta.stats?.relationships || 0;
+
+  // Try to read process list
+  const processDir = path.join(nexusDir, "processes");
+  if (exists(processDir)) {
+    try {
+      const processFiles = fs.readdirSync(processDir).filter((f) => f.endsWith(".json"));
+      for (const pf of processFiles.slice(0, 30)) {
+        const proc = readJsonSafe(path.join(processDir, pf));
+        if (proc?.name) {
+          flows.processes.push({
+            name: proc.name,
+            description: proc.description || null,
+            steps: (proc.steps || []).length,
+            entryPoint: proc.entryPoint || null,
+          });
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Try to extract key flows from the graph database
+  const graphPath = path.join(nexusDir, "graph.json");
+  const graphData = readJsonSafe(graphPath);
+  if (graphData?.nodes) {
+    const processNodes = (graphData.nodes || []).filter((n) => n.type === "Process" || n.labels?.includes("Process"));
+    for (const pn of processNodes.slice(0, 20)) {
+      flows.keyFlows.push({
+        name: pn.name || pn.id,
+        description: pn.description || null,
+      });
+    }
+  }
+
+  return flows;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Dependencies & signals                                            */
 /* ------------------------------------------------------------------ */
 
@@ -568,6 +1277,7 @@ function findConfigFiles(root, allFiles) {
 function buildDocPlan({
   entrypoints, configs, workspacePkgs, structure, signals, routes, stateManagement,
   networkLayer, components, fileStats, importGraph,
+  complexity, typeSystem, archViolations, apiSurface, depHealth, testCoverage, gitActivity, executionFlows,
 }) {
   const evidence = (arr) => [...new Set(arr.filter(Boolean))].slice(0, 25);
   const pages = [];
@@ -736,6 +1446,150 @@ function buildDocPlan({
     hints: `测试文件数: ${fileStats.testFiles}。package.json scripts 说明、CI/CD、环境变量。`,
   });
 
+  // --- 7. Code Quality & Architecture Health ---
+  const hasComplexityData = complexity.hotspots.length > 0;
+  const hasViolations = archViolations.summary.circularCount > 0 || archViolations.summary.layerViolationCount > 0;
+
+  if (hasComplexityData || hasViolations) {
+    pages.push({
+      section: "7",
+      slug: "quality/code-quality",
+      title: "代码质量与架构健康度",
+      category: "quality",
+      required: true,
+      evidence: evidence([
+        ...complexity.hotspots.slice(0, 5).map((h) => h.file),
+        ...archViolations.circularDeps.slice(0, 3).flatMap((c) => c.chain),
+      ]),
+      hints: `复杂度热点 ${complexity.hotspots.length} 个, 循环依赖 ${archViolations.summary.circularCount} 个, 层级违规 ${archViolations.summary.layerViolationCount} 个, God 文件 ${archViolations.summary.godFileCount} 个。`,
+    });
+  }
+
+  // 7.1 Complexity deep dive
+  if (complexity.summary.filesOver300Lines > 5) {
+    pages.push({
+      section: "7.1",
+      slug: "quality/complexity-analysis",
+      title: "复杂度分析",
+      category: "quality",
+      required: false,
+      evidence: evidence(complexity.hotspots.slice(0, 10).map((h) => h.file)),
+      hints: `${complexity.summary.filesOver300Lines} 个文件超过 300 行, ${complexity.summary.functionsOver50Lines} 个函数超过 50 行。按文件和函数维度剖析。`,
+    });
+  }
+
+  // 7.2 Architecture violations
+  if (hasViolations) {
+    pages.push({
+      section: "7.2",
+      slug: "quality/architecture-violations",
+      title: "架构违规与改进建议",
+      category: "quality",
+      required: false,
+      evidence: evidence([
+        ...archViolations.circularDeps.slice(0, 5).flatMap((c) => c.chain),
+        ...archViolations.layerViolations.slice(0, 5).map((v) => v.from),
+      ]),
+      hints: `循环依赖链、层级违规详解、重构建议。`,
+    });
+  }
+
+  // --- 8. Type System & API Surface ---
+  if (typeSystem.summary.hasTypeScript || apiSurface.summary.totalExports > 10) {
+    pages.push({
+      section: "8",
+      slug: "api/type-system-and-api",
+      title: "类型系统与 API Surface",
+      category: "api",
+      required: typeSystem.summary.hasTypeScript,
+      evidence: evidence([
+        ...typeSystem.typeFiles.slice(0, 10),
+        ...apiSurface.exportedHooks.slice(0, 5).map((h) => h.file),
+      ]),
+      hints: `${typeSystem.summary.interfaceCount} 个接口, ${typeSystem.summary.typeAliasCount} 个类型别名, ${apiSurface.summary.totalExports} 个导出。`,
+    });
+  }
+
+  // 8.1 Hooks & composables
+  if (apiSurface.summary.hookCount > 5) {
+    pages.push({
+      section: "8.1",
+      slug: "api/hooks-and-composables",
+      title: "自定义 Hooks 目录",
+      category: "api",
+      required: false,
+      evidence: evidence(apiSurface.exportedHooks.slice(0, 15).map((h) => h.file)),
+      hints: `${apiSurface.summary.hookCount} 个自定义 Hooks。每个 Hook 的用途、参数、返回值。`,
+    });
+  }
+
+  // --- 9. Project Health Dashboard ---
+  pages.push({
+    section: "9",
+    slug: "health/project-health",
+    title: "项目健康仪表盘",
+    category: "health",
+    required: true,
+    evidence: evidence([
+      "package.json",
+      ...testCoverage.testFiles.slice(0, 5),
+      ...gitActivity.hotFiles.slice(0, 5).map((f) => f.file),
+    ]),
+    hints: `依赖健康 (${depHealth.summary.totalCount} 个依赖), 测试覆盖 (比率 ${testCoverage.summary.coverageRatio}), Git 活跃度 (${gitActivity.summary.totalCommits} 次提交, ${gitActivity.summary.contributorCount} 位贡献者)${executionFlows.detected ? ", 执行流 (" + executionFlows.summary.processCount + " 个流程)" : ""}。`,
+  });
+
+  // 9.1 Dependency health detail
+  if (depHealth.summary.totalCount > 30 || depHealth.heavyDeps.length > 0) {
+    pages.push({
+      section: "9.1",
+      slug: "health/dependency-health",
+      title: "依赖健康度详解",
+      category: "health",
+      required: false,
+      evidence: evidence(["package.json", depHealth.lockFile].filter(Boolean)),
+      hints: `${depHealth.summary.directCount} 直接依赖, ${depHealth.heavyDeps.length} 个重量级依赖, ${depHealth.duplicateRisk.length} 个版本冲突风险。`,
+    });
+  }
+
+  // 9.2 Test coverage detail
+  if (testCoverage.summary.testFileCount > 0) {
+    pages.push({
+      section: "9.2",
+      slug: "health/test-coverage",
+      title: "测试覆盖分析",
+      category: "health",
+      required: false,
+      evidence: evidence(testCoverage.testFiles.slice(0, 10)),
+      hints: `测试框架: ${testCoverage.testFrameworks.join(", ")}。${testCoverage.summary.testFileCount} 个测试文件, 覆盖比 ${testCoverage.summary.coverageRatio}。未覆盖文件清单。`,
+    });
+  }
+
+  // 9.3 Git activity & evolution
+  if (gitActivity.summary.totalCommits > 0) {
+    pages.push({
+      section: "9.3",
+      slug: "health/git-activity",
+      title: "Git 活跃度与演化",
+      category: "health",
+      required: false,
+      evidence: evidence(gitActivity.hotFiles.slice(0, 10).map((f) => f.file)),
+      hints: `${gitActivity.summary.totalCommits} 次提交, ${gitActivity.summary.contributorCount} 位贡献者, 仓库年龄 ${gitActivity.summary.repoAge || "未知"}。热文件、提交频率趋势。`,
+    });
+  }
+
+  // 9.4 Execution flows (if GitNexus available)
+  if (executionFlows.detected && executionFlows.summary.processCount > 0) {
+    pages.push({
+      section: "9.4",
+      slug: "health/execution-flows",
+      title: "执行流全景",
+      category: "health",
+      required: false,
+      evidence: evidence(executionFlows.processes.slice(0, 10).map((p) => p.entryPoint).filter(Boolean)),
+      hints: `${executionFlows.summary.processCount} 个关键执行流程。每个流程的入口、步骤、涉及模块。`,
+    });
+  }
+
   // Renumber sections to be contiguous
   let currentMajor = 0;
   let currentMinor = 0;
@@ -761,13 +1615,14 @@ function buildDocPlan({
 /* ------------------------------------------------------------------ */
 
 function generateQualityReport({
-  signals, docPlan, fileStats, importGraph, routes, stateManagement, networkLayer, components, outDir
+  signals, docPlan, fileStats, importGraph, routes, stateManagement, networkLayer, components, outDir,
+  complexity, typeSystem, archViolations, apiSurface, depHealth, testCoverage, gitActivity, executionFlows,
 }) {
   const now = new Date().toISOString();
 
-  return `# Project Wiki 扫描报告
+  return `# Project Wiki 深度扫描报告
 
-由 \`analyze-repo.mjs\` 在 **${now}** 生成。
+由 \`analyze-repo.mjs\` (Enhanced v2) 在 **${now}** 生成。
 
 ## 仓库概况
 
@@ -779,6 +1634,9 @@ function generateQualityReport({
 | 总文件数 | ${fileStats.totalFiles} |
 | 总大小 | ${fileStats.totalSizeKB} KB |
 | 本地 import 边数 | ${importGraph.totalEdges} |
+| 直接依赖 | ${depHealth.summary.directCount} |
+| 开发依赖 | ${depHealth.summary.devCount} |
+| 导出 API 总数 | ${apiSurface.summary.totalExports} |
 
 ## 技术栈信号
 
@@ -813,6 +1671,140 @@ ${importGraph.hubFiles.slice(0, 15).map((h) => `- \`${h.file}\` (${h.importedByC
 
 ${importGraph.topExternalDeps.slice(0, 15).map((d) => `- \`${d.name}\` — ${d.usageCount} 次 import`).join("\n") || "- 无足够数据"}
 
+---
+
+## 代码复杂度分析
+
+| 指标 | 值 |
+|------|-----|
+| 分析文件数 | ${complexity.summary.totalFilesAnalyzed} |
+| 平均文件行数 | ${complexity.summary.avgLinesPerFile} |
+| 平均函数数/文件 | ${complexity.summary.avgFunctionsPerFile} |
+| 最大嵌套深度 | ${complexity.summary.maxNestingDepth} |
+| 超过 300 行的文件 | ${complexity.summary.filesOver300Lines} |
+| 超过 500 行的文件 | ${complexity.summary.filesOver500Lines} |
+| 超过 50 行的函数 | ${complexity.summary.functionsOver50Lines} |
+
+### 复杂度热点（Top 10）
+
+${complexity.hotspots.slice(0, 10).map((h) => `- \`${h.file}\` — ${h.lines} 行, ${h.functions} 函数, 嵌套 ${h.maxNesting} 层, 复杂度 ${h.complexity}`).join("\n") || "- 无数据"}
+
+### 超长函数（Top 10）
+
+${complexity.functionLengths.slice(0, 10).map((f) => `- \`${f.name}\` in \`${f.file}:${f.startLine}\` — ${f.lines} 行`).join("\n") || "- 无数据"}
+
+---
+
+## 类型系统分析
+
+| 指标 | 值 |
+|------|-----|
+| TypeScript | ${typeSystem.summary.hasTypeScript ? "是" : "否"} |
+| 类型定义文件 | ${typeSystem.summary.typeFileCount} |
+| 接口数 | ${typeSystem.summary.interfaceCount} |
+| 类型别名 | ${typeSystem.summary.typeAliasCount} |
+| 枚举数 | ${typeSystem.summary.enumCount} |
+${typeSystem.tsconfigStrict !== undefined ? `| strict 模式 | ${typeSystem.tsconfigStrict ? "开启" : "关闭"} |\n` : ""}
+
+### 核心接口/类型（Top 15）
+
+${typeSystem.coreInterfaces.slice(0, 15).map((t) => `- \`${t.kind} ${t.name}\` in \`${t.file}:${t.line}\`${t.extends ? ` extends ${t.extends}` : ""}${t.properties ? ` (${t.properties} 属性)` : ""}`).join("\n") || "- 无数据"}
+
+---
+
+## 架构违规检测
+
+| 指标 | 值 |
+|------|-----|
+| 循环依赖 | ${archViolations.summary.circularCount} |
+| 层级违规 | ${archViolations.summary.layerViolationCount} |
+| God 文件 | ${archViolations.summary.godFileCount} |
+| 孤立文件 | ${archViolations.summary.orphanCount} |
+
+${archViolations.circularDeps.length ? "### 循环依赖\n\n" + archViolations.circularDeps.slice(0, 10).map((c) => `- ${c.chain.map((f) => "\`" + f + "\`").join(" -> ")}`).join("\n") : ""}
+
+${archViolations.layerViolations.length ? "\n### 层级违规（Top 10）\n\n" + archViolations.layerViolations.slice(0, 10).map((v) => `- \`${v.from}\` (${v.fromLayer}) imports \`${v.to}\` (${v.toLayer})`).join("\n") : ""}
+
+${archViolations.godFiles.length ? "\n### God 文件（Top 10）\n\n" + archViolations.godFiles.slice(0, 10).map((g) => `- \`${g.file}\` — ${g.imports} imports, ${g.importedBy} importers`).join("\n") : ""}
+
+---
+
+## API Surface
+
+| 指标 | 值 |
+|------|-----|
+| 总导出 | ${apiSurface.summary.totalExports} |
+| 导出函数 | ${apiSurface.summary.functionCount} |
+| 导出 Hooks | ${apiSurface.summary.hookCount} |
+| 导出组件 | ${apiSurface.summary.componentCount} |
+| 导出类 | ${apiSurface.summary.classCount} |
+| Barrel 文件 | ${apiSurface.barrelFiles.length} |
+
+${apiSurface.exportedHooks.length ? "### 自定义 Hooks\n\n" + apiSurface.exportedHooks.slice(0, 15).map((h) => `- \`${h.name}\` — \`${h.file}:${h.line}\``).join("\n") : ""}
+
+---
+
+## 依赖健康度
+
+| 指标 | 值 |
+|------|-----|
+| 直接依赖 | ${depHealth.summary.directCount} |
+| 开发依赖 | ${depHealth.summary.devCount} |
+| Peer 依赖 | ${depHealth.summary.peerCount} |
+| Lock 文件 | ${depHealth.lockFile || "未找到"} |
+| 重量级依赖 | ${depHealth.heavyDeps.length} |
+| 版本冲突风险 | ${depHealth.duplicateRisk.length} |
+
+${depHealth.heavyDeps.length ? "### 重量级依赖\n\n" + depHealth.heavyDeps.map((d) => `- \`${d.name}@${d.version}\` — ${d.reason}`).join("\n") : ""}
+
+${depHealth.duplicateRisk.length ? "\n### 版本冲突风险\n\n" + depHealth.duplicateRisk.map((d) => `- \`${d.name}\`: ${d.versions.join(" vs ")}`).join("\n") : ""}
+
+---
+
+## 测试覆盖分析
+
+| 指标 | 值 |
+|------|-----|
+| 测试文件数 | ${testCoverage.summary.testFileCount} |
+| 源码文件数 | ${testCoverage.summary.sourceFileCount} |
+| 测试/源码比 | ${testCoverage.summary.coverageRatio} |
+| 测试框架 | ${testCoverage.testFrameworks.join(", ") || "未检测到"} |
+| E2E 测试 | ${testCoverage.summary.hasE2E ? "有" : "无"} |
+| 已配对 | ${testCoverage.sourceToTestMap.length} 个文件 |
+| 未覆盖 | ${testCoverage.untestedSources.length} 个文件 |
+
+${testCoverage.untestedSources.length ? "### 未覆盖的重要源文件（Top 15）\n\n" + testCoverage.untestedSources.slice(0, 15).map((f) => `- \`${f}\``).join("\n") : ""}
+
+---
+
+## Git 活跃度
+
+| 指标 | 值 |
+|------|-----|
+| 总提交数 | ${gitActivity.summary.totalCommits} |
+| 贡献者 | ${gitActivity.summary.contributorCount} |
+| 最近提交 | ${gitActivity.summary.lastCommitDate || "N/A"} |
+| 仓库年龄 | ${gitActivity.summary.repoAge || "N/A"} |
+
+${gitActivity.hotFiles.length ? "### 变更频率最高的文件（Top 15）\n\n" + gitActivity.hotFiles.slice(0, 15).map((f) => `- \`${f.file}\` — ${f.changeCount} 次变更`).join("\n") : ""}
+
+${gitActivity.contributors.length ? "\n### 核心贡献者\n\n" + gitActivity.contributors.slice(0, 10).map((c) => `- **${c.name}** — ${c.commits} 次提交`).join("\n") : ""}
+
+${Object.keys(gitActivity.commitFrequency).length ? "\n### 提交频率（近 12 月）\n\n" + Object.entries(gitActivity.commitFrequency).map(([month, count]) => `- ${month}: ${count} 次`).join("\n") : ""}
+
+---
+
+## 执行流分析（GitNexus）
+
+${executionFlows.detected
+  ? `- 已检测到 GitNexus 索引
+- 执行流数量: ${executionFlows.summary.processCount}
+- 关系总数: ${executionFlows.summary.flowCount}
+${executionFlows.processes.length ? "\n### 关键执行流\n\n" + executionFlows.processes.slice(0, 15).map((p) => `- **${p.name}**${p.description ? ": " + p.description : ""} (${p.steps} 步)`).join("\n") : ""}`
+  : "- 未检测到 GitNexus 索引。运行 \\`npx gitnexus analyze\\` 启用执行流分析。"}
+
+---
+
 ## 文档计划 (doc_plan.json)
 
 ${docPlan.pages.map((p) => `- **${p.section}** \`${p.slug}\` ${p.required ? "★" : "○"} — ${p.title}\n  - ${p.hints}`).join("\n")}
@@ -823,6 +1815,10 @@ ${docPlan.pages.map((p) => `- **${p.section}** \`${p.slug}\` ${p.required ? "★
 - **import 图谱**仅解析文件前 200 行的静态 import/require
 - 动态 import、alias（如 \`@/\`）和 barrel re-export 可能遗漏
 - 路由与状态检测基于正则匹配，复杂配置请人工核对
+- **复杂度分析**基于启发式度量（函数数量 + 嵌套深度 + 行数），非精确圈复杂度
+- **类型系统分析**仅检测显式导出的 interface/type，内部类型未计入
+- **架构违规**检测基于目录名推断的层级模型，自定义架构需人工调整规则
+- **测试覆盖**基于文件名匹配，非运行时覆盖率
 
 ## 后续动作
 
@@ -880,6 +1876,31 @@ function main() {
   console.log("  Detecting components...");
   const components = detectComponents(root, sourceFiles);
 
+  // --- NEW: Deep analysis modules ---
+  console.log("  Analyzing code complexity...");
+  const complexity = analyzeCodeComplexity(sourceFiles);
+
+  console.log("  Analyzing type system...");
+  const typeSystem = analyzeTypeSystem(root, sourceFiles);
+
+  console.log("  Detecting architecture violations...");
+  const archViolations = detectArchitectureViolations(root, sourceFiles, importGraph);
+
+  console.log("  Analyzing API surface...");
+  const apiSurface = analyzeAPISurface(sourceFiles);
+
+  console.log("  Analyzing dependency health...");
+  const depHealth = analyzeDependencyHealth(root);
+
+  console.log("  Analyzing test coverage...");
+  const testCoverage = analyzeTestCoverage(root, allFiles, sourceFiles);
+
+  console.log("  Analyzing git activity...");
+  const gitActivity = analyzeGitActivity(root);
+
+  console.log("  Checking execution flows (GitNexus)...");
+  const executionFlows = analyzeExecutionFlows(root);
+
   // Build outputs
   const repoJson = {
     name: pkg.name || path.basename(root),
@@ -930,6 +1951,7 @@ function main() {
   const docPlan = buildDocPlan({
     entrypoints, configs, workspacePkgs, structure, signals,
     routes, stateManagement, networkLayer, components, fileStats, importGraph,
+    complexity, typeSystem, archViolations, apiSurface, depHealth, testCoverage, gitActivity, executionFlows,
   });
 
   // Write meta files
@@ -939,11 +1961,20 @@ function main() {
   writeFileEnsured(path.join(metaDir, "structure.json"), JSON.stringify(structureJson, null, 2) + "\n");
   writeFileEnsured(path.join(metaDir, "entrypoints.json"), JSON.stringify(entryJson, null, 2) + "\n");
   writeFileEnsured(path.join(metaDir, "imports.json"), JSON.stringify(importsJson, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "complexity.json"), JSON.stringify(complexity, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "types.json"), JSON.stringify(typeSystem, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "violations.json"), JSON.stringify(archViolations, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "api-surface.json"), JSON.stringify(apiSurface, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "dep-health.json"), JSON.stringify(depHealth, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "test-coverage.json"), JSON.stringify(testCoverage, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "git-activity.json"), JSON.stringify(gitActivity, null, 2) + "\n");
+  writeFileEnsured(path.join(metaDir, "execution-flows.json"), JSON.stringify(executionFlows, null, 2) + "\n");
   writeFileEnsured(path.join(metaDir, "doc_plan.json"), JSON.stringify(docPlan, null, 2) + "\n");
 
   // Quality report
   const qr = generateQualityReport({
     signals, docPlan, fileStats, importGraph, routes, stateManagement, networkLayer, components, outDir,
+    complexity, typeSystem, archViolations, apiSurface, depHealth, testCoverage, gitActivity, executionFlows,
   });
   const qrPath = path.join(wikiRoot, "quality-report.md");
   fs.mkdirSync(wikiRoot, { recursive: true });

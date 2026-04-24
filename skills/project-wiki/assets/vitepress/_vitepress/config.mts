@@ -24,8 +24,7 @@ function escapeAngleBrackets(md: MarkdownIt) {
   };
 }
 
-export default withMermaid(
-  defineConfig({
+export default withMermaid(defineConfig({
   title: "__WIKI_TITLE__",
   description: "__WIKI_TITLE__ — DeepWiki 风格项目全景文档",
   lang: "zh-CN",
@@ -52,5 +51,4 @@ export default withMermaid(
     sidebarMenuLabel: "目录",
     darkModeSwitchLabel: "主题",
   },
-  }),
-);
+}));
