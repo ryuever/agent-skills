@@ -68,6 +68,29 @@ function ensureCategoryDirs(baseDir) {
   }
 }
 
+function mergePackageJson(root) {
+  const pkgPath = path.join(root, "package.json");
+  if (!fs.existsSync(pkgPath)) {
+    return;
+  }
+
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  pkg.devDependencies = pkg.devDependencies || {};
+
+  let changed = false;
+  if (!pkg.devDependencies["remark-mermaidjs"]) {
+    pkg.devDependencies["remark-mermaidjs"] = "^7.0.0";
+    changed = true;
+  }
+
+  if (changed) {
+    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
+    console.log(`Updated ${pkgPath}`);
+  } else {
+    console.log("No package.json changes needed");
+  }
+}
+
 function main() {
   const { root, skillDir, title, contentDir, force } = parseArgs(process.argv);
   const refs = path.join(skillDir, "references", "CONVENTIONS.md");
@@ -111,11 +134,16 @@ function main() {
 
 建议将 \`${WIKI_DIR}/\` 作为规范源目录，并在提交前同步到此目录，
 或在项目中通过 loader/source 配置直接读取 \`${WIKI_DIR}/\`。
+
+如需 Mermaid 渲染，请在 Fumadocs 的 MDX 配置中启用 \`remark-mermaidjs\`。
 `,
     force,
   );
 
-  // 3. Auto-link with architecture-diagrams/ when present
+  // 3. Ensure Mermaid remark plugin dependency when package.json exists.
+  mergePackageJson(root);
+
+  // 4. Auto-link with architecture-diagrams/ when present
   const linker = path.join(__dirname, "link-architecture-diagrams.mjs");
   if (fs.existsSync(linker)) {
     execFileSync(process.execPath, [linker, "--root", root], {
@@ -130,6 +158,9 @@ function main() {
   }
   console.log(
     `  Configure your Fumadocs source to read from "${contentDir}" or "${WIKI_DIR}/"`,
+  );
+  console.log(
+    '  Enable Mermaid in your Fumadocs MDX config: remarkPlugins: [remarkMermaid]',
   );
   console.log(
     "  Update your project navigation (meta.json or source/layout config) after adding docs",

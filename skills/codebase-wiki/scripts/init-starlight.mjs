@@ -98,6 +98,7 @@ function mergePackageJson(root) {
     astro: "^5.7.10",
     "@astrojs/starlight": "^0.34.1",
     sharp: "^0.33.0",
+    "remark-mermaidjs": "^7.0.0",
   };
   for (const [k, v] of Object.entries(deps)) {
     if (!pkg.devDependencies[k]) {

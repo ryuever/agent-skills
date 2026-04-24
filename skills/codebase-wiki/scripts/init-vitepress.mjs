@@ -104,6 +104,10 @@ function mergePackageJson(root) {
     pkg.devDependencies.vitepress = "^1.6.3";
     changed = true;
   }
+  if (!pkg.devDependencies["vitepress-plugin-mermaid"]) {
+    pkg.devDependencies["vitepress-plugin-mermaid"] = "^2.0.17";
+    changed = true;
+  }
   if (changed || !fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
     console.log(`Updated ${pkgPath}`);

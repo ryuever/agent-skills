@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import type { MarkdownIt } from "markdown-it";
+import { withMermaid } from "vitepress-plugin-mermaid";
 import { wikiNav, wikiSidebar } from "./sidebar.generated.mts";
 
 /**
@@ -23,7 +24,8 @@ function escapeAngleBrackets(md: MarkdownIt) {
   };
 }
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: "__WIKI_TITLE__",
   description: "__WIKI_TITLE__ — DeepWiki 风格项目全景文档",
   lang: "zh-CN",
@@ -34,9 +36,6 @@ export default defineConfig({
       md.use(escapeAngleBrackets);
     },
   },
-  // Enable mermaid if vitepress-plugin-mermaid is installed:
-  //   import { withMermaid } from "vitepress-plugin-mermaid";
-  //   export default withMermaid(defineConfig({ ... }));
   themeConfig: {
     nav: wikiNav,
     sidebar: wikiSidebar,
@@ -53,4 +52,5 @@ export default defineConfig({
     sidebarMenuLabel: "目录",
     darkModeSwitchLabel: "主题",
   },
-});
+  }),
+);

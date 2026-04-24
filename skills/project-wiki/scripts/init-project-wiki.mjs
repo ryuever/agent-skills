@@ -107,6 +107,10 @@ function mergePackageJson(root, stacks) {
       pkg.devDependencies.vitepress = "^1.6.3";
       changed = true;
     }
+    if (!pkg.devDependencies["vitepress-plugin-mermaid"]) {
+      pkg.devDependencies["vitepress-plugin-mermaid"] = "^2.0.17";
+      changed = true;
+    }
   }
 
   if (stacks.has("mintlify")) {

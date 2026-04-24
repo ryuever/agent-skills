@@ -1,7 +1,9 @@
 import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 import { wikiNav, wikiSidebar } from "./sidebar.generated.mts";
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: "__WIKI_TITLE__",
   description: "__WIKI_TITLE__ — Emacs Org 笔记归档",
   lang: "zh-CN",
@@ -25,4 +27,5 @@ export default defineConfig({
     outline: { label: "目录", level: [2, 3] },
     lastUpdated: { text: "最后更新于" },
   },
-});
+  }),
+);

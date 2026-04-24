@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import type { MarkdownIt } from "markdown-it";
+import { withMermaid } from "vitepress-plugin-mermaid";
 import { wikiNav, wikiSidebar } from "./sidebar.generated.mts";
 
 /**
@@ -23,7 +24,8 @@ function escapeAngleBrackets(md: MarkdownIt) {
   };
 }
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: "__WIKI_TITLE__",
   description: "__WIKI_TITLE__ — 架构分析、技术讨论、参考手册与路线图",
   lang: "zh-CN",
@@ -47,4 +49,5 @@ export default defineConfig({
     outline: { label: "目录", level: [2, 3] },
     lastUpdated: { text: "最后更新于" },
   },
-});
+  }),
+);

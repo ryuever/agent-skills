@@ -1,8 +1,12 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import remarkMermaid from "remark-mermaidjs";
 import { starlightSidebar } from "./.starlight/sidebar.generated.mjs";
 
 export default defineConfig({
+  markdown: {
+    remarkPlugins: [remarkMermaid],
+  },
   integrations: [
     starlight({
       title: "__WIKI_TITLE__",
