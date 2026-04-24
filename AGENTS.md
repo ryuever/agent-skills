@@ -26,6 +26,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   │   └── CONVENTIONS.md         # Writing conventions
     │   ├── scripts/                   # Node.js (.mjs) init & sidebar scripts
     │   │   ├── init-vitepress.mjs
+    │   │   ├── init-fumadocs.mjs
     │   │   ├── init-mintlify.mjs
     │   │   ├── init-starlight.mjs
     │   │   ├── link-architecture-diagrams.mjs
@@ -90,7 +91,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
 
 | Skill | Purpose | Numbering | Doc Engines |
 |-------|---------|-----------|-------------|
-| **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap), with optional auto-link bridge to architecture-diagrams | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight |
+| **codebase-wiki** | Archive source-code reading notes with categories (Architecture / Discussion / Reference / Roadmap), with optional auto-link bridge to architecture-diagrams | `A-xxx` `D-xxx` `R-xxx` `P-xxx` | VitePress, Mintlify, Starlight, Fumadocs |
 | **project-wiki** | One-shot DeepWiki-style panorama: static analysis → hierarchical numbered docs | `1.x`–`6.x` (overview → operations) | VitePress, Mintlify, Starlight |
 | **curated-reads** | Curate external tech articles with confidence scoring & explicit conflict handling | `AI-xxx` `ENG-xxx` `FE-xxx` etc. | Starlight only |
 | **org-to-vitepress** | Batch-convert Emacs Org-mode tree to Markdown via Pandoc; auto-scaffold VitePress site with multi-level sidebar mirroring the source folders | none (directory-driven) | VitePress only |

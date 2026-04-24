@@ -1,15 +1,16 @@
 ---
 name: codebase-wiki
-description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；可选 VitePress 或 Mintlify 站点。适用于"保存到 wiki / 归档到 codebase-wiki / 生成学习笔记"等意图。"
+description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；支持 VitePress、Mintlify、Starlight、Fumadocs 等文档站点。适用于"保存到 wiki / 归档到 codebase-wiki / 生成学习笔记"等意图。"
 ---
 
 # Codebase wiki（知识库目录）
 
-把当前对话中的分析整理为**可长期维护**的文档，写入目标仓库根目录的 **`codebase-wiki/`**，并支持三种文档引擎：
+把当前对话中的分析整理为**可长期维护**的文档，写入目标仓库根目录的 **`codebase-wiki/`**，并支持四种文档引擎：
 
 - **VitePress**（`srcDir: ./codebase-wiki`）—— 默认选项
 - **Mintlify**（内容目录 `codebase-wiki/`，配置文件 `codebase-wiki/docs.json`）
 - **Starlight**（Astro 集成，内容目录 `src/content/docs/`，配置文件 `astro.config.mjs`）
+- **Fumadocs**（React 文档框架，内容目录按项目现有 source 配置；常见为 `content/docs/`）
 
 详细书写规范见本 skill 包内 `references/CONVENTIONS.md`；初始化后的目标仓库内会复制一份到 `codebase-wiki/CONVENTIONS.md`。
 
@@ -28,7 +29,7 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 | 仅归档单篇文档 | `SKILL.md` + `references/CONVENTIONS.md` |
 | 需要维护双向引用 | 上述 + `CONVENTIONS` 中 references 关系表 |
 | 需要更新站点导航 | 上述 + 对应脚本注释（`scripts/regenerate-*.mjs`） |
-| 首次初始化站点 | 上述 + 对应引擎模板目录 `assets/<engine>/` |
+| 首次初始化站点 | 上述 + 对应引擎模板目录 `assets/<engine>/`（Fumadocs 使用 `scripts/init-fumadocs.mjs`） |
 
 默认不要并行阅读全部 references，先完成最小闭环，再按任务升级读取深度。
 
@@ -117,6 +118,29 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
    > Starlight 的内容目录为 `src/content/docs/`（Astro 内容集合规范），文档按 `architecture/`、`discussion/`、`reference/`、`roadmap/` 子目录组织。
 
+### 方案 D：Fumadocs
+
+   先执行 Fumadocs 初始化脚本（创建 `codebase-wiki/` 规范源目录，并按需创建 Fumadocs 内容目录）：
+
+   ```bash
+   node <skill-dir>/scripts/init-fumadocs.mjs --root . --title "我的 Wiki" --content-dir "content/docs/codebase-wiki"
+   ```
+
+   若目标仓库尚未接入 Fumadocs，再按官方脚手架创建站点：
+
+   ```bash
+   pnpm create fumadocs-app
+   ```
+
+   将 `codebase-wiki/` 下文档同步到项目已配置的 Fumadocs 内容源目录（常见为 `content/docs/` 下的 `codebase-wiki/` 子目录），并保持四个分类子目录结构：
+
+   - `architecture/`
+   - `discussion/`
+   - `reference/`
+   - `roadmap/`
+
+   > Fumadocs 的内容源可由项目自行定义（如 `source.ts` + Content Collections）。执行前先读取目标项目现有配置，避免覆盖用户既有目录约定。
+
 ## 何时使用
 
 - 用户要求把讨论保存到 `codebase-wiki/`、生成学习笔记、搭建/更新源码 wiki
@@ -186,6 +210,11 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
 - **Starlight**：在仓库根运行 `node <skill-dir>/scripts/regenerate-starlight-sidebar.mjs --root .`
   若目标项目未使用该脚本，手工编辑 `astro.config.mjs` 中 `starlight()` 的 `sidebar` 配置。
+
+- **Fumadocs**：当前无内置 `regenerate-*` 脚本。根据目标项目导航实现手工同步：
+  1) 若使用 `meta.json` 维护目录顺序，更新对应目录的 `meta.json`；
+  2) 若在 `source.ts`/`layout` 中手写导航，补充新文档入口；
+  3) 确保首页与分类页能链接到新增文档。
 
 ### 第 7 步：向用户确认
 
