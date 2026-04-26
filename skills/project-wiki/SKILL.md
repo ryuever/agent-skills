@@ -166,6 +166,8 @@ node <skill-dir>/scripts/analyze-repo.mjs --root . --out-dir project-wiki
 
 ### 5) 刷新导航
 
+> **必做检查**：只要本次工作流中发生了文档的**新增、删除或重命名**，就**必须**在结束前执行下方 sidebar 脚本。如果跳过此步骤，侧栏导航将与实际文档不同步，用户在站点中无法找到新文档或仍能看到已删除的文档入口。
+
 ```bash
 node <skill-dir>/scripts/regenerate-sidebar.mjs --root .
 ```
