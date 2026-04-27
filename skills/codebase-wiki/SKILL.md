@@ -1,6 +1,6 @@
 ---
 name: codebase-wiki
-description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；支持 VitePress、Mintlify、Starlight、Fumadocs 等文档站点。适用于"保存到 wiki / 归档到 codebase-wiki / 生成学习笔记"等意图。"
+description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/reference/roadmap）、维护 INDEX 与 references 图；支持 VitePress、Mintlify、Starlight、Fumadocs 等文档站点。适用于「保存到 wiki / 归档到 codebase-wiki / 生成学习笔记」等意图。"
 ---
 
 # Codebase wiki（知识库目录）
