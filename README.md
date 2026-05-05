@@ -28,11 +28,11 @@ This keeps agent context smaller, reduces accidental over-generation, and improv
 ## Install (Cursor & others)
 
 ```bash
-npx skills add <your-github>/agent-skills --skill codebase-wiki -a cursor -y
-npx skills add <your-github>/agent-skills --skill project-wiki -a cursor -y
-npx skills add <your-github>/agent-skills --skill curated-reads -a cursor -y
-npx skills add <your-github>/agent-skills --skill org-to-vitepress -a cursor -y
-npx skills add <your-github>/agent-skills --skill architecture-diagram -a cursor -y
+npx skills add https://github.com/ryuever/agent-skills/agent-skills --skill codebase-wiki -a cursor -y
+npx skills add https://github.com/ryuever/agent-skills/agent-skills --skill project-wiki -a cursor -y
+npx skills add https://github.com/ryuever/agent-skills/agent-skills --skill curated-reads -a cursor -y
+npx skills add https://github.com/ryuever/agent-skills/agent-skills --skill org-to-vitepress -a cursor -y
+npx skills add https://github.com/ryuever/agent-skills/agent-skills --skill architecture-diagram -a cursor -y
 ```
 
 Local checkout while developing:
