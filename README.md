@@ -8,7 +8,7 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 
 | Skill | Summary |
 | --- | --- |
-| [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site and regenerate sidebar/nav. |
+| [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site, regenerate sidebar/nav, and write checklist-first roadmap docs. |
 | [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
 | [curated-reads](./skills/curated-reads/SKILL.md) | Curate external tech articles (blogs, tweets, newsletters) with confidence scoring, explicit conflict handling, and volume-adaptive output; uses Starlight as doc engine. |
 | [org-to-vitepress](./skills/org-to-vitepress/SKILL.md) | Batch-convert an Emacs Org-mode directory tree to Markdown via Pandoc and scaffold a VitePress site to serve it, with auto-generated multi-level sidebar from the folder structure. |
