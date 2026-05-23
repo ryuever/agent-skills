@@ -30,6 +30,7 @@ export default withMermaid(
   description: "__WIKI_TITLE__ — 架构分析、技术讨论、参考手册与路线图",
   lang: "zh-CN",
   srcDir: "./codebase-wiki",
+  head: [["link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }]],
   markdown: {
     defaultHighlightLang: "typescript",
     config: (md) => {

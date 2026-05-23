@@ -1,6 +1,6 @@
 ---
 name: codebase-wiki
-description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/issue/reference/roadmap）、维护 INDEX 与 references 图；支持 VitePress、Mintlify、Starlight、Fumadocs 等文档站点。适用于「保存到 wiki / 归档到 codebase-wiki / 生成学习笔记」等意图。"
+description: "将对话中的源码阅读与分析整理为规范化 Markdown，归档到项目 codebase-wiki/（architecture/discussion/issue/reference/roadmap）、维护首页索引与 references 图；支持 VitePress、Mintlify、Starlight、Fumadocs 等文档站点。适用于「保存到 wiki / 归档到 codebase-wiki / 生成学习笔记」等意图。"
 ---
 
 # Codebase wiki（知识库目录）
@@ -16,7 +16,7 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
 各引擎的模板文件（配置、首页、侧栏占位等）存放在 `assets/` 目录下，初始化脚本通过复制 + 变量替换的方式生成骨架：
 
-- `assets/vitepress/` — VitePress 项目骨架（`.vitepress/config.mts`、`INDEX.md` 等）
+- `assets/vitepress/` — VitePress 项目骨架（`.vitepress/config.mts`、首页模板、favicon 等；初始化后首页写入 `codebase-wiki/index.md`）
 - `assets/mintlify/` — Mintlify 项目骨架（`docs.json`、`INDEX.mdx` 等）
 - `assets/starlight/` — Starlight/Astro 项目骨架（`astro.config.mjs`、`src/content/docs/index.mdx` 等）
 
@@ -60,12 +60,14 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
    node <skill-dir>/scripts/init-vitepress.mjs --root . --title "我的 Wiki"
    ```
 
-   安装 VitePress 并本地预览：
+   安装依赖并本地预览：
 
    ```bash
-   pnpm add -D vitepress
+   pnpm install
    pnpm run docs:wiki:dev
    ```
+
+   > 初始化脚本会向 `package.json` 合并 VitePress、`vitepress-plugin-mermaid` 以及 Mermaid dev 预构建所需的 `dayjs`、`debug`、`@braintree/sanitize-url`、`cytoscape`、`cytoscape-cose-bilkent`。在 pnpm workspace 中不要只安装 `vitepress`，否则浏览器 dev 模式可能直接加载 `dayjs/dayjs.min.js` 并报 `default export` 错误。
 
    **新增/重命名** Markdown 后，在仓库根执行：
 
@@ -170,7 +172,7 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
 ### 第 2 步：确定编号
 
-读取 `codebase-wiki/INDEX.md` 对应分类表格中的最大编号，分配下一个序号（如当前最大 A-003 → 新文 A-004）。
+读取 `codebase-wiki/index.md` 对应分类表格中的最大编号，分配下一个序号（如当前最大 A-003 → 新文 A-004）。
 
 ### 第 3 步：生成文档
 
@@ -222,9 +224,9 @@ description: "将对话中的源码阅读与分析整理为规范化 Markdown，
 
 为新文与被引用文同时更新 `references`，并更新被引用文的 `updated` 日期。`rel` 取值与反向关系见 `references/CONVENTIONS.md` 表格。
 
-### 第 5 步：更新 INDEX
+### 第 5 步：更新首页索引
 
-在 `codebase-wiki/INDEX.md` 对应分类表格中追加一行：编号、链接、标题、概述。
+在 `codebase-wiki/index.md` 对应分类表格中追加一行：编号、链接、标题、概述。
 
 ### 第 6 步：同步侧栏与导航
 

@@ -15,7 +15,7 @@ const WIKI_DIR = "codebase-wiki";
  * Options:
  *   --root <dir>       Target repository root (default: cwd)
  *   --skill-dir <dir>  Path to the codebase-wiki skill folder (default: parent of scripts/)
- *   --title <string>   Wiki title for INDEX hero + VitePress title (default: Codebase Wiki)
+ *   --title <string>   Wiki title for index hero + VitePress title (default: Codebase Wiki)
  *   --github <url>     Optional GitHub repo URL for theme social link
  *   --force            Overwrite generated files if they already exist
  */
@@ -51,6 +51,19 @@ function parseArgs(argv) {
 // use underscore-prefixed names (e.g. `_vitepress`) that are restored to
 // dot-prefixed names (`.vitepress`) when copied into the target repo.
 const DOTDIR_RENAME = { _vitepress: ".vitepress", _starlight: ".starlight" };
+
+// These packages are imported by vitepress-plugin-mermaid's browser-side Vite
+// pre-bundling path. Listing them explicitly keeps pnpm's strict dependency
+// layout from serving CommonJS files such as dayjs/dayjs.min.js directly.
+const VITEPRESS_DEV_DEPENDENCIES = {
+  vitepress: "^1.6.3",
+  "vitepress-plugin-mermaid": "^2.0.17",
+  dayjs: "^1.11.20",
+  debug: "^4.4.3",
+  "@braintree/sanitize-url": "^7.1.2",
+  cytoscape: "^3.33.4",
+  "cytoscape-cose-bilkent": "^4.1.0",
+};
 
 /**
  * Recursively copy a directory, applying text replacements to non-binary files.
@@ -100,13 +113,11 @@ function mergePackageJson(root) {
     }
   }
   pkg.devDependencies = pkg.devDependencies || {};
-  if (!pkg.devDependencies.vitepress) {
-    pkg.devDependencies.vitepress = "^1.6.3";
-    changed = true;
-  }
-  if (!pkg.devDependencies["vitepress-plugin-mermaid"]) {
-    pkg.devDependencies["vitepress-plugin-mermaid"] = "^2.0.17";
-    changed = true;
+  for (const [name, version] of Object.entries(VITEPRESS_DEV_DEPENDENCIES)) {
+    if (!hasPackageDependency(pkg, name)) {
+      pkg.devDependencies[name] = version;
+      changed = true;
+    }
   }
   if (changed || !fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf8");
@@ -114,6 +125,29 @@ function mergePackageJson(root) {
   } else {
     console.log("No package.json changes needed");
   }
+}
+
+function hasPackageDependency(pkg, name) {
+  return Boolean(
+    pkg.dependencies?.[name] ||
+      pkg.devDependencies?.[name] ||
+      pkg.optionalDependencies?.[name] ||
+      pkg.peerDependencies?.[name],
+  );
+}
+
+function ensureGitignoreLine(root, line) {
+  const gitignorePath = path.join(root, ".gitignore");
+  const existing = fs.existsSync(gitignorePath)
+    ? fs.readFileSync(gitignorePath, "utf8")
+    : "";
+  const lines = existing.split(/\r?\n/).filter(Boolean);
+  if (lines.includes(line)) {
+    return;
+  }
+  const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  fs.appendFileSync(gitignorePath, `${prefix}${line}\n`, "utf8");
+  console.log(`Updated ${gitignorePath}`);
 }
 
 function main() {
@@ -160,7 +194,8 @@ function main() {
 
   // 4. Copy assets/vitepress/ skeleton into target repo
   //    - assets/vitepress/_vitepress/* → <root>/.vitepress/*
-  //    - assets/vitepress/INDEX.md    → <root>/codebase-wiki/INDEX.md
+  //    - assets/vitepress/INDEX.md    → <root>/codebase-wiki/index.md
+  //    - assets/vitepress/public/*    → <root>/codebase-wiki/public/*
   // NOTE: assets use `_vitepress` (not `.vitepress`) because `npx skills`
   // filters out dotfiles/dotdirs during installation.
   const vpAssetsDir = path.join(assetsDir, "_vitepress");
@@ -168,7 +203,7 @@ function main() {
   copyDirWithReplacements(vpAssetsDir, vpDestDir, replacements, force);
 
   const indexSrc = path.join(assetsDir, "INDEX.md");
-  const indexDest = path.join(root, WIKI_DIR, "INDEX.md");
+  const indexDest = path.join(root, WIKI_DIR, "index.md");
   if (fs.existsSync(indexSrc)) {
     if (!fs.existsSync(indexDest) || force) {
       let content = fs.readFileSync(indexSrc, "utf8");
@@ -182,8 +217,19 @@ function main() {
     }
   }
 
-  // 5. Merge package.json (keep our pinned versions)
+  const publicAssetsDir = path.join(assetsDir, "public");
+  if (fs.existsSync(publicAssetsDir)) {
+    copyDirWithReplacements(
+      publicAssetsDir,
+      path.join(root, WIKI_DIR, "public"),
+      replacements,
+      force,
+    );
+  }
+
+  // 5. Merge package.json and ignore VitePress dev cache
   mergePackageJson(root);
+  ensureGitignoreLine(root, ".vitepress/cache");
 
   // 6. Run regenerate-sidebar.mjs to create initial sidebar
   const regen = path.join(__dirname, "regenerate-sidebar.mjs");
@@ -196,7 +242,7 @@ function main() {
   }
 
   console.log("\nNext steps:");
-  console.log("  pnpm add -D vitepress   # or npm/yarn if not already installed");
+  console.log("  pnpm install   # or npm/yarn install if not using pnpm");
   console.log("  pnpm run docs:wiki:dev");
   console.log(
     `  After adding Markdown under ${WIKI_DIR}/, re-run: node <skill-dir>/scripts/regenerate-sidebar.mjs --root .`,

@@ -12,7 +12,8 @@ assets/
 │   ├── .vitepress/
 │   │   ├── config.mts               # VitePress 配置模板
 │   │   └── sidebar.generated.mts    # 侧栏空占位
-│   └── INDEX.md                     # 首页模板
+│   ├── INDEX.md                     # 首页模板（初始化后写入 codebase-wiki/index.md）
+│   └── public/favicon.svg           # 图标占位
 ├── mintlify/            # Mintlify 项目骨架
 │   ├── docs.json                    # Mintlify 配置模板
 │   ├── INDEX.mdx                    # 首页模板
@@ -63,9 +64,11 @@ node <skill-dir>/scripts/init-vitepress.mjs --root . --title "我的 Wiki"
 ### 安装与预览
 
 ```bash
-pnpm add -D vitepress
+pnpm install
 pnpm run docs:wiki:dev
 ```
+
+`init-vitepress.mjs` 会合并 `package.json` 脚本与 devDependencies，包括 VitePress、`vitepress-plugin-mermaid` 以及 Mermaid 在 Vite dev 预构建中需要显式解析的依赖。初始化后运行包管理器安装即可。
 
 ### 文档变更后重建侧栏
 

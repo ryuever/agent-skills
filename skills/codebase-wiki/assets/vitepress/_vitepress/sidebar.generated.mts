@@ -39,6 +39,6 @@ export const wikiSidebar = {
 export const wikiNav = [
   {
     "text": "首页",
-    "link": "/INDEX"
+    "link": "/"
   }
 ];

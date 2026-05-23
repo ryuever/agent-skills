@@ -83,7 +83,7 @@ function main() {
   const sidebar = {};
 
   /** @type {Array<{ text: string; link: string }>} */
-  const nav = [{ text: "首页", link: "/INDEX" }];
+  const nav = [{ text: "首页", link: "/" }];
 
   for (const { dir, group, nav: navLabel } of CATEGORIES) {
     const dirPath = path.join(wikiRoot, dir);

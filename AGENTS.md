@@ -69,7 +69,7 @@ Layout follows [antfu/skills](https://github.com/antfu/skills) conventions. Each
     │   │   ├── link-architecture-diagrams.mjs
     │   │   └── regenerate-vitepress-sidebar.mjs
     │   └── assets/
-    │       └── vitepress/                   # config.mts / sidebar.generated.mts / INDEX.md templates
+    │       └── vitepress/                   # config.mts / sidebar.generated.mts / index template
     │
     └── architecture-diagram/          # Standalone HTML + SVG architecture diagram generator
         ├── SKILL.md
@@ -194,6 +194,6 @@ npx skills update codebase-wiki -y
 
 - This repo has **no `package.json`**, no build step, no CI — it is purely a content + script repository
 - Do **not** add npm dependencies to scripts; use only Node.js built-ins
-- The `assets/` directories contain template files that use `INDEX.md` (uppercase) as the home page filename to avoid conflicts with default index behavior
+- Some `assets/` directories may keep uppercase `INDEX.md` as a template filename, but VitePress initializers must write target home pages as lowercase `index.md` so `/` resolves correctly.
 - When editing `SKILL.md` files, remember they serve dual purpose: human documentation AND agent instruction set
 - The skills are independent and can be installed separately; they do not share code

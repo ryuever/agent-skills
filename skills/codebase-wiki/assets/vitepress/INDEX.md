@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: 文档索引
-      link: /INDEX#文档索引
+      link: /#文档索引
     - theme: alt
       text: 书写规范
       link: /CONVENTIONS
@@ -16,19 +16,19 @@ hero:
 features:
   - title: 架构分析
     details: 模块职责、依赖与系统设计笔记。
-    link: /INDEX
+    link: /
   - title: 技术讨论
     details: 方案对比、概念辨析与深度笔记。
-    link: /INDEX
+    link: /
   - title: Issue 记录
     details: AI coding 过程中的问题现象、修复过程与回归结论。
-    link: /INDEX
+    link: /
   - title: 参考手册
     details: 目录结构与速查。
-    link: /INDEX
+    link: /
   - title: 规划路线
     details: 差距分析、优先级与待办。
-    link: /INDEX
+    link: /
 ---
 
 > 本目录（`codebase-wiki/`）存放 AI 辅助生成的分析文档、技术讨论、Issue 记录、参考手册与规划路线。  

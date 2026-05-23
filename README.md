@@ -8,7 +8,7 @@ This repository is meant to be **its own Git project** (clone or fork it, then p
 
 | Skill | Summary |
 | --- | --- |
-| [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, `INDEX`, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site, regenerate sidebar/nav, and write checklist-first roadmap docs. |
+| [codebase-wiki](./skills/codebase-wiki/SKILL.md) | Archive study notes under `codebase-wiki/` with IDs, an index page, `references`, and optional VitePress (`srcDir: ./codebase-wiki`). Includes Node scripts to scaffold the site, regenerate sidebar/nav, and write checklist-first roadmap docs. |
 | [project-wiki](./skills/project-wiki/SKILL.md) | DeepWiki-style project panorama: deep analysis (import graph, route/state/API detection, file stats) → hierarchical numbered docs under `project-wiki/`; supports VitePress (default), Mintlify, and Starlight. Frontend-first. |
 | [curated-reads](./skills/curated-reads/SKILL.md) | Curate external tech articles (blogs, tweets, newsletters) with confidence scoring, explicit conflict handling, and volume-adaptive output; uses Starlight as doc engine. |
 | [org-to-vitepress](./skills/org-to-vitepress/SKILL.md) | Batch-convert an Emacs Org-mode directory tree to Markdown via Pandoc and scaffold a VitePress site to serve it, with auto-generated multi-level sidebar from the folder structure. |
@@ -56,13 +56,13 @@ node ./.cursor/skills/codebase-wiki/scripts/init-vitepress.mjs --root . --title 
 Options:
 
 - `--skill-dir <path>` — if the skill is not at `./.cursor/skills/codebase-wiki`, point to the folder that contains `scripts/` and `references/`.
-- `--force` — overwrite generated `INDEX.md` / `.vitepress/config.mts` if they already exist.
+- `--force` — overwrite generated `codebase-wiki/index.md` / `.vitepress/config.mts` if they already exist.
 - `--github <url>` — optional GitHub link for the VitePress theme.
 
-Then install VitePress (the script merges `package.json` scripts and adds a `vitepress` devDependency entry):
+Then install dependencies (the script merges `package.json` scripts and adds VitePress, `vitepress-plugin-mermaid`, and Mermaid dev pre-bundling dependencies):
 
 ```bash
-pnpm add -D vitepress
+pnpm install
 pnpm run docs:wiki:dev
 ```
 
